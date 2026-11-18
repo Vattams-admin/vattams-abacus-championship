@@ -317,6 +317,8 @@ function AdminConsole() {
     else setMessage(JSON.stringify(data));
   }
 
+  const toIso = (value: string) => value ? new Date(value).toISOString() : null;
+
   async function saveConfiguration(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     let ageGroups: unknown;
@@ -330,9 +332,9 @@ function AdminConsole() {
       config: {
         slug: slug.trim(), title: title.trim(), description: description.trim(),
         status: "draft", rules_version: rulesVersion.trim(), age_cutoff_date: ageCutoff,
-        registration_opens_at: registrationOpens || null,
-        registration_closes_at: registrationCloses || null,
-        starts_at: startsAt || null, ends_at: endsAt || null,
+        registration_opens_at: toIso(registrationOpens),
+        registration_closes_at: toIso(registrationCloses),
+        starts_at: toIso(startsAt), ends_at: toIso(endsAt),
         duration_seconds: Number(duration), age_groups: ageGroups
       }
     });
