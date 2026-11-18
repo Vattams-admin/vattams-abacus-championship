@@ -14,14 +14,25 @@ declare
   v_value jsonb;
   v_array jsonb;
   v_item jsonb;
+  -- Keys are compared after lowercasing and removing punctuation. Include both
+  -- snake_case and camelCase-normalized spellings so JSON naming style cannot
+  -- bypass participant-side answer/scoring redaction.
   v_sensitive constant text[] := array[
-    'answer','answers','correct','correct_answer','correct_answers','answer_key',
-    'answer_keys','accepted_answer','accepted_answers','solution','solutions',
-    'rationale','rationales','explanation','explanations','mark','marks','points',
-    'score','scoring','rubric','grading','expected_answer','private_notes',
+    'answer','answers','answertext','answertexts','correct','correctanswer',
+    'correctanswers','correctanswertext','correctanswerindex','correctanswersindex',
+    'answerkey','answerkeys','acceptedanswer','acceptedanswers',
+    'expectedanswer','expectedanswers','expectedanswertext',
+    'solution','solutions','solutiontext','rationale','rationales','rationaletext',
+    'explanation','explanations','explanationtext','mark','marks','markvalue',
+    'points','pointvalue','score','scorevalue','scoring','scoringrule',
+    'rubric','grading','gradingrule','privatenotes','private_note',
+    'correct_answer','correct_answers','answer_key','answer_keys',
+    'accepted_answer','accepted_answers','expected_answer',
     'correct_option_index','correctoptionindex','correct_option','correctoption',
-    'answer_index','answerindex','option_index','optionindex','correct_choice',
-    'correctchoice','is_correct','iscorrect','review_status','approved_by','approved_at'
+    'answer_index','answerindex','option_index','optionindex',
+    'correct_choice','correctchoice','correctchoiceindex',
+    'is_correct','iscorrect','iscorrectanswer','isanswercorrect',
+    'review_status','reviewstatus','approved_by','approvedby','approved_at','approvedat'
   ];
 begin
   if p_value is null then return null; end if;
