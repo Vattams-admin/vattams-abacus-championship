@@ -3,7 +3,7 @@
 **Date:** 2026-11-18  
 **Repository:** Vattams-admin/vattams-abacus-championship  
 **Branch:** feat/abacus-standalone-app  
-**Supabase boundary:** lqzdyegfhpinmojyrtur only  
+**Supabase boundary:** lqzdyegfhpinmoiyrtur only  
 **Deployment target:** Cloudflare Pages only
 
 ## Source findings
@@ -33,7 +33,7 @@ A second issue was found in the existing scoring query: exam start selects only 
 
 ## Validation still required
 
-- Apply only after verifying the live migration history for project `lqzdyegfhpinmojyrtur`.
+- Apply only after verifying the live migration history for project `lqzdyegfhpinmoiyrtur`.
 - Run SQL tests for string / object / array / numeric / null responses, valid and invalid options, stale versions, wrong participant, wrong attempt, expired attempt and missing answer keys.
 - Verify `correct_answer` JSONB uses the same JSON string serialization as the selected option text.
 - Test extra approved questions beyond `question_count` and confirm they do not affect the result.
@@ -43,7 +43,7 @@ A second issue was found in the existing scoring query: exam start selects only 
 
 - GitHub branch search confirms `feat/abacus-standalone-app` exists and file reads/writes are available.
 - Changes are committed only to this feature branch. `main` is not modified or merged.
-- Supabase reconnect is still blocked: `get_project` and `list_migrations` for the exact allowed project `lqzdyegfhpinmojyrtur` return permission denied. No other Supabase project was accessed. This migration has **not** been applied.
+- Supabase reconnect is still blocked: `get_project` and `list_migrations` for the exact allowed project `lqzdyegfhpinmoiyrtur` return permission denied. No other Supabase project was accessed. This migration has **not** been applied.
 - No Cloudflare connector is available in this session. No Cloudflare secrets, Pages settings, DNS or deployment were changed.
 - No build, SQL test, Deno check or production E2E was run in this turn.
 - Official objective question content remains pending independent review; this module does not approve or publish any question bank.
