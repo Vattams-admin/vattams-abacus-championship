@@ -130,6 +130,7 @@ create table if not exists abacus.exam_attempts (
   created_at timestamptz not null default now(),
   unique (registration_id, attempt_no),
   unique (competition_id, age_group_id, id),
+  unique (competition_id, registration_id, id),
   unique (competition_id, id),
   unique (idempotency_key),
   foreign key (competition_id, age_group_id)
@@ -171,7 +172,7 @@ create table if not exists abacus.result_publications (
   approved_at timestamptz not null default now(),
   published_at timestamptz,
   foreign key (competition_id, registration_id) references abacus.registrations(competition_id, id),
-  foreign key (competition_id, attempt_id) references abacus.exam_attempts(competition_id, id),
+  foreign key (competition_id, registration_id, attempt_id) references abacus.exam_attempts(competition_id, registration_id, id),
   unique (competition_id, registration_id),
   unique (attempt_id)
 );
