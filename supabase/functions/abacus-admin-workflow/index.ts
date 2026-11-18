@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
 
   const action = body.action;
   if (action === "save_configuration") {
-    if (!["super_admin", "competition_admin"].includes(role.role)) {
+    if (!["super_admin", "competition_admin"].includes(role)) {
       return json({ error: "Competition administrator permission required" }, 403, origin);
     }
     const config = body.config;
