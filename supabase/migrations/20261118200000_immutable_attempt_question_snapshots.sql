@@ -101,8 +101,8 @@ begin
       return jsonb_build_object('attempt_id',v_attempt.id,'status','expired','deadline_at',v_attempt.deadline_at);
     end if;
     select count(*) into v_count from abacus.attempt_questions where attempt_id=v_attempt.id;
-    if v_count <> v_group.question_count then
-      raise exception 'Existing attempt has no complete immutable question snapshot; reconnect is blocked for integrity' using errcode='55000';
+    if v_count < 1 then
+      raise exception 'Existing attempt has no immutable question snapshot; reconnect is blocked for integrity' using errcode='55000';
     end if;
   else
     if exists (
@@ -281,7 +281,6 @@ set search_path = pg_catalog, abacus
 as $$
 declare
   v_attempt abacus.exam_attempts%rowtype;
-  v_group abacus.age_groups%rowtype;
   v_score numeric(9,2);
   v_total integer;
   v_now timestamptz := clock_timestamp();
@@ -308,12 +307,6 @@ begin
     return jsonb_build_object('submitted',true,'status','expired','submitted_at',v_now);
   end if;
 
-  select * into v_group from abacus.age_groups
-  where id=v_attempt.age_group_id and competition_id=v_attempt.competition_id;
-  if not found or v_group.question_count < 1 then
-    raise exception 'Attempt question-set configuration is invalid' using errcode='55000';
-  end if;
-
   select coalesce(sum(case when ar.response_payload=aq.correct_answer then aq.marks else 0 end),0),
          count(*)
     into v_score,v_total
@@ -322,7 +315,7 @@ begin
     on ar.attempt_id=aq.attempt_id and ar.question_id=aq.question_id
   where aq.attempt_id=v_attempt.id;
 
-  if v_total <> v_group.question_count then
+  if v_total < 1 then
     raise exception 'Immutable attempt question snapshot is incomplete; scoring is blocked' using errcode='55000';
   end if;
 
