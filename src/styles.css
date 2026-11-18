@@ -93,3 +93,15 @@ button,a{font:inherit}.shell{max-width:1180px;margin:auto;padding:0 30px}.topbar
 .exam-question input:disabled{opacity:.7}
 .exam-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin:18px 0}
 @media(max-width:560px){.exam-status-row{align-items:flex-start;flex-direction:column}.exam-actions{flex-direction:column}.exam-actions button{width:100%}.question-heading{flex-direction:column}.question-heading span+span{text-align:left}}
+
+/* Module 63 — structured participant question and option renderer */
+.question-topic{margin:12px 0 4px;color:#d9b86e;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.question-prompt{margin:12px 0 18px;color:#f2f5fa;font:600 16px/1.6 Manrope,sans-serif}
+.exam-options{display:grid;gap:9px;border:0;padding:0;margin:0;min-width:0}
+.exam-options legend{color:#e5c77f;font-size:11px;font-weight:700;margin-bottom:8px}
+.exam-option{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:1px solid #ffffff26;border-radius:9px;background:#ffffff08;color:#e8edf7;text-align:left;cursor:pointer;transition:border-color .15s,background .15s}
+.exam-option:hover:not(:disabled){border-color:#d7b66c99;background:#d7b66c12}
+.exam-option.selected{border-color:#d7b66c;background:#d7b66c20;box-shadow:inset 0 0 0 1px #d7b66c55}
+.exam-option:focus-visible{outline:2px solid #f0d28a;outline-offset:2px}
+.exam-option:disabled{cursor:default;opacity:.75}
+.option-letter{display:grid;place-items:center;flex:0 0 28px;height:28px;border:1px solid #d7b66c88;border-radius:7px;color:#f0d28a;font-size:11px;font-weight:800}
