@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc -b --pretty false",
+    "test:question-redaction": "node scripts/test-question-redaction-contract.mjs",
     "validate:structure": "node scripts/validate-abacus-international-bank.mjs --structure-only",
     "preflight:release": "node scripts/preflight-abacus-release.mjs"
   },
