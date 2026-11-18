@@ -67,3 +67,10 @@ Important: No competition configuration or age-band data has been seeded. No rea
 - Confirm Cloudflare Pages permissions, production environment variables, exact deployment SHA, custom domain, SPA routing and production smoke tests.
 
 No real student personal data or live competition should be accepted until the release gates pass. No merge to `main` or production deployment is implied by documentation or UI work.
+
+
+## Latest source-only security hardening — 18 Nov 2026
+- The pending participant question-redaction migration now denies known answer/scoring aliases and unknown key names containing answer/correct/solution/rationale/explanation/scoring/grading/rubric/mark/score/point/private-note/review-status/approval tokens after normalization.
+- The participant competition dashboard now treats `under_review` attempts as already used, matching the server-side one-attempt gate.
+- Added `npm run test:question-redaction` as a source-contract regression check.
+- These are feature-branch source changes only. The migration has NOT been applied to Supabase production, and the regression check has not been run from a full repository checkout. Do not treat this as a live production fix until migration application and integration tests are completed.
