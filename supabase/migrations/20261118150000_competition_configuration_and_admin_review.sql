@@ -146,6 +146,16 @@ begin
     raise exception 'Existing age bands cannot be removed or re-ranged after registrations exist' using errcode = '55000';
   end if;
 
+  -- Remove obsolete bands only when there are no registrations to preserve.
+  if v_existing_count = 0 then
+    delete from abacus.age_groups g
+    where g.competition_id=v_comp.id
+      and not exists (
+        select 1 from jsonb_array_elements(p_config->'age_groups') x
+        where x->>'code'=g.code
+      );
+  end if;
+
   -- Keep existing age-group IDs stable where code is unchanged.
   for v_group in select value from jsonb_array_elements(p_config->'age_groups') loop
     insert into abacus.age_groups(competition_id,code,label,min_age_months,max_age_months,question_count,duration_seconds)
