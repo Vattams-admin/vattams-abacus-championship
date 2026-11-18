@@ -132,6 +132,29 @@ begin
     v_group_count := v_group_count + 1;
   end loop;
 
+  -- Once an attempt exists, freeze the complete age-band contract. Module 65
+  -- relies on question_count and duration_seconds remaining stable on reconnect.
+  if exists (select 1 from abacus.exam_attempts where competition_id=v_comp.id) then
+    select count(*) into v_existing_count
+    from abacus.age_groups where competition_id=v_comp.id;
+    if v_existing_count <> jsonb_array_length(p_config->'age_groups')
+       or exists (
+         select 1 from abacus.age_groups g
+         where g.competition_id=v_comp.id
+           and not exists (
+             select 1 from jsonb_array_elements(p_config->'age_groups') x
+             where x->>'code'=g.code
+               and x->>'label'=g.label
+               and (x->>'min_age_months')::integer=g.min_age_months
+               and (x->>'max_age_months')::integer=g.max_age_months
+               and (x->>'question_count')::integer=g.question_count
+               and (x->>'duration_seconds')::integer=g.duration_seconds
+           )
+       ) then
+      raise exception 'Age-group bands, question counts and durations are frozen after an exam attempt exists' using errcode = '55000';
+    end if;
+  end if;
+
   select count(*) into v_existing_count from abacus.registrations where competition_id=v_comp.id;
   if v_existing_count > 0 and exists (
     select 1 from abacus.age_groups g
