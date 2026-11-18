@@ -412,6 +412,38 @@ type CompetitionEntry = { competition_id: string; title: string; description: st
 type ExamSession = { attempt_id: string; status: string; started_at: string; server_now: string; deadline_at: string; questions: ExamQuestion[] };
 type QueuedAnswer = { response: string; response_version: number; client_saved_at: string };
 
+type PublicQuestionPayload = { question?: unknown; options?: unknown; language?: unknown; topic?: unknown; subtopic?: unknown };
+function ExamQuestionCard({ item, answer, waiting, disabled, onAnswer }: {
+  item: ExamQuestion; answer: string; waiting: boolean; disabled: boolean; onAnswer: (value: string) => void;
+}) {
+  const payload = item.question && typeof item.question === "object" && !Array.isArray(item.question)
+    ? item.question as PublicQuestionPayload : null;
+  const prompt = typeof payload?.question === "string" ? payload.question
+    : typeof item.question === "string" ? item.question : "Question content is unavailable.";
+  const options = Array.isArray(payload?.options)
+    ? payload.options.filter((value): value is string => typeof value === "string") : [];
+  return <article className="exam-question" aria-labelledby={"question-title-" + item.question_id}>
+    <div className="question-heading">
+      <span id={"question-title-" + item.question_id}>QUESTION {item.sequence_no}</span>
+      <span>{waiting ? "Waiting to sync" : "Response unchanged"}</span>
+    </div>
+    {typeof payload?.topic === "string" && <p className="question-topic">{payload.topic}{typeof payload.subtopic === "string" ? " · " + payload.subtopic : ""}</p>}
+    <p className="question-prompt">{prompt}</p>
+    {options.length > 0 ? <fieldset className="exam-options" disabled={disabled}>
+      <legend>Select one answer</legend>
+      {options.map((option, index) => <button key={index} type="button"
+        className={"exam-option" + (answer === option ? " selected" : "")}
+        aria-pressed={answer === option} onClick={() => onAnswer(option)}>
+        <span className="option-letter">{String.fromCharCode(65 + index)}</span>{option}
+      </button>)}
+    </fieldset> : <>
+      <label htmlFor={"answer-" + item.question_id}>Your answer</label>
+      <input id={"answer-" + item.question_id} value={answer}
+        onChange={event => onAnswer(event.target.value)} disabled={disabled} autoComplete="off" />
+    </>}
+  </article>;
+}
+
 function StudentExamRoom() {
   const [competitionId, setCompetitionId] = useState("");
   const [session, setSession] = useState<ExamSession | null>(null);
@@ -608,14 +640,10 @@ function StudentExamRoom() {
         <p className="form-note">Server deadline: {new Date(session.deadline_at).toLocaleString()} · Attempt: {session.attempt_id}</p>
         {remaining === 0 && <p role="alert" className="form-error">The displayed deadline has passed. Editing and submission are disabled; reconnect to let the server finalize the attempt state.</p>}
         <div className="exam-question-list">
-          {session.questions.map((item) => <article className="exam-question" key={item.question_id}>
-            <div className="question-heading"><span>QUESTION {item.sequence_no}</span><span>{pending[item.question_id] ? "Waiting to sync" : "Response saved / not changed"}</span></div>
-            <pre>{typeof item.question === "string" ? item.question : JSON.stringify(item.question, null, 2)}</pre>
-            <label htmlFor={"answer-" + item.question_id}>Your answer</label>
-            <input id={"answer-" + item.question_id} value={answers[item.question_id] ?? ""}
-              onChange={event => updateAnswer(item.question_id, event.target.value)}
-              disabled={submitted || remaining === 0} autoComplete="off" />
-          </article>)}
+          {session.questions.map((item) => <ExamQuestionCard key={item.question_id} item={item}
+            answer={answers[item.question_id] ?? ""} waiting={Boolean(pending[item.question_id])}
+            disabled={submitted || remaining === 0}
+            onAnswer={value => updateAnswer(item.question_id, value)} />)}
         </div>
         <div className="exam-actions">
           <button className="secondary" onClick={() => void flushPending().then(() => setMessage("All current answers are saved on the competition server.")).catch(e => setError(e.message))} disabled={busy || !online || Object.keys(pending).length === 0}>Save now</button>
