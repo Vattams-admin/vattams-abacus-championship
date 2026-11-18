@@ -15,8 +15,9 @@ Standalone online Japanese Soroban competition platform.
 - React 19 + TypeScript + Vite.
 - Responsive dark navy / metallic gold championship identity.
 - Japanese Soroban hero illustration: each rod renders one heaven bead (5) and four earth beads (1 each).
-- Participant sign-in UI uses Supabase email OTP and publishable browser key only.
-- Registration, eligibility, live exam, scoring, results and certificates remain guarded informational workflows until their secure server-side implementation is complete.
+- Participant sign-in uses Supabase email OTP and the publishable browser key only.
+- Registration portal now has separate student request and guardian-consent steps; it invokes authenticated Edge Functions and never writes directly to the private schema.
+- Competition exam, scoring, results and certificates remain guarded until their server-side lifecycle is implemented.
 
 ## Dedicated Supabase project — connected and verified
 - Project: `vattams-abacus-championship`
@@ -24,12 +25,22 @@ Standalone online Japanese Soroban competition platform.
 - Region: `ap-south-1` (Mumbai)
 - Status at last verification: `ACTIVE_HEALTHY`
 - PostgreSQL 17.12.
-- Eleven tables in private `abacus` schema; RLS enabled on all; zero rows.
-- Four migrations deployed: `create_abacus_competition_core`, `harden_attempt_response_scope`, `index_competition_foreign_keys`, `index_result_publication_scope`.
-- No Edge Functions deployed yet. Auth provider, production SMTP, redirect URLs, Storage buckets/policies and app workflows still require configuration.
-- Security advisor reports 11 informational `rls_enabled_no_policy` findings. These tables are intentionally private/server-only at this stage; do not add broad client policies just to silence the advisor.
-- Performance advisor reports unused indexes on empty/new tables; review after workload tests rather than deleting them prematurely.
-- Health advisor returned no findings at the last check.
+- Private schema `abacus`; all tables have RLS enabled and no browser-role policies.
+- Six migrations deployed, including guardian-confirmed registration intents, service-only RPCs and concurrency/age-band hardening.
+- Two Edge Functions deployed and ACTIVE with JWT verification enabled:
+  - `abacus-registration-intent`
+  - `abacus-guardian-consent`
+- Health advisor returned no findings.
+- Security advisor reports informational `rls_enabled_no_policy` notices on private server-only tables; do not add broad client policies to silence them.
+
+## Registration workflow and gates
+1. Participant signs in with a verified email.
+2. Participant creates a time-limited registration intent with competition slug, display name, date of birth and guardian email.
+3. Guardian signs in with a separate verified account, supplies the request reference and explicitly accepts the consent summary.
+4. Server verifies guardian email matches the request, checks competition registration status/window, consent/rules version and published age cut-off, then resolves exactly one age band.
+5. Server atomically creates a registration with pending eligibility and records an audit event. This does not grant exam access.
+
+Important: No competition configuration or age-band data has been seeded. No real registration can succeed until a reviewed competition is configured with rules version, age cut-off, registration window and non-overlapping age bands. The current consent wording is a preliminary summary, not a reviewed legal/privacy notice. Publish the complete privacy notice and final consent text before opening registration. Production rate limiting, origin allow-listing and full E2E testing are also pending.
 
 ## Client configuration and secrets
 - Browser variables: `VITE_ABACUS_SUPABASE_URL` and `VITE_ABACUS_SUPABASE_PUBLISHABLE_KEY` only.
@@ -37,13 +48,12 @@ Standalone online Japanese Soroban competition platform.
 - Never paste Cloudflare API tokens into chat or commit them. Configure deployment credentials in Cloudflare's secure dashboard/secret store.
 - Cloudflare Pages build: `npm run build`; output directory: `dist`; production branch: `feat/abacus-standalone-app`.
 
-## Online competition production gates
-1. Supabase Auth email OTP, SMTP, Site URL, redirect URLs, expiry and rate-limit verification.
-2. Secure Edge Functions for registration, eligibility review, exam start/save/submit, server-side scoring, result publication and certificate verification.
-3. Guardian consent, age-band enforcement, staff authorization, answer-key isolation, audit trail and rate limits.
-4. Autosave/reconnect recovery, monotonic response versions, server-authoritative timing and idempotent submission.
-5. Independent review of all question content and private answer keys.
-6. Typecheck, production build, accessibility, responsive, performance, security and end-to-end tests.
-7. Confirm Cloudflare Pages deployment of the exact branch head and inspect logs.
+## Remaining online competition production gates
+- Auth provider, production SMTP, Site URL, redirect URLs, expiry and rate-limit verification.
+- Reviewed consent/privacy notice and published competition/age-group configuration.
+- Rate limits, abuse detection and explicit production-origin CORS allow-list.
+- Secure exam start/save/submit, server-side scoring, moderation, result publication and certificate verification.
+- Accessibility, responsive, performance, security and end-to-end tests.
+- Confirm Cloudflare Pages deployment of the exact branch head and inspect logs.
 
 No real student personal data or live competition should be accepted until the release gates pass. No merge to `main` or production deployment is implied by documentation or UI work.
