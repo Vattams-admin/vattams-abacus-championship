@@ -18,7 +18,10 @@ declare
     'answer','answers','correct','correct_answer','correct_answers','answer_key',
     'answer_keys','accepted_answer','accepted_answers','solution','solutions',
     'rationale','rationales','explanation','explanations','mark','marks','points',
-    'score','scoring','rubric','grading','expected_answer','private_notes'
+    'score','scoring','rubric','grading','expected_answer','private_notes',
+    'correct_option_index','correctoptionindex','correct_option','correctoption',
+    'answer_index','answerindex','option_index','optionindex','correct_choice',
+    'correctchoice','is_correct','iscorrect','review_status','approved_by','approved_at'
   ];
 begin
   if p_value is null then return null; end if;
