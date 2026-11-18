@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
     rpcArgs = { p_user_id: userId, p_competition_id: body.competition_id };
   } else if (action === "save_response") {
     if (typeof body.attempt_id !== "string" || typeof body.question_id !== "string" ||
-        !Number.isSafeInteger(body.response_version) || Number(body.response_version) < 1 ||
+        typeof body.response_version !== "number" || !Number.isSafeInteger(body.response_version) || body.response_version < 1 ||
         !Object.prototype.hasOwnProperty.call(body, "response")) {
       return reply({ error: "Invalid response payload" }, 400, origin);
     }
