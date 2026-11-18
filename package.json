@@ -1,0 +1,11 @@
+{
+  "name": "vattams-abacus-championship",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Standalone online Soroban and Abacus competition platform",
+  "type": "module",
+  "scripts": {
+    "validate:structure": "node scripts/validate-abacus-international-bank.mjs --structure-only",
+    "preflight:release": "node scripts/preflight-abacus-release.mjs"
+  }
+}
