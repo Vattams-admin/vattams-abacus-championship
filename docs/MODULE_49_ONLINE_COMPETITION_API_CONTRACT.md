@@ -131,9 +131,16 @@ Internal worker/function only:
 7. Deploy only to the dedicated Cloudflare target after staging and security approval.
 
 ## Current connection status
-The exact owner-confirmed project reference is `lqzdyegfhpinmoiyrtur`, URL `https://lqzdyegfhpinmoiyrtur.supabase.co`, region Mumbai (`ap-south-1`). The Supabase tool call currently fails with `link_id must identify an eligible linked account`; therefore no project details, schema, Auth settings, Storage buckets, secrets, or Edge Functions could be inspected or changed.
-
-The next required operation is to restore the Supabase app account link, then verify this exact project ID before any mutation.
+The dedicated project is now connected and has been re-verified:
+- Project reference: `lqzdyegfhpinmoiyrtur`
+- Project URL: `https://lqzdyegfhpinmoiyrtur.supabase.co`
+- Region: Mumbai (`ap-south-1`)
+- Status: `ACTIVE_HEALTHY`
+- PostgreSQL: 17.12
+- Four successful migrations; 11 private `abacus` tables with RLS enabled.
+- No Edge Functions are deployed yet.
+- No Auth provider configuration, Storage buckets, or application records have been added.
+The previous connection-error note is obsolete. The project identity was verified before database mutations; only this dedicated project was used.
 
 ## Cloudflare status
 No Cloudflare tool/connector is available in this session. Cloudflare remains the only deployment target; no deployment is claimed.
