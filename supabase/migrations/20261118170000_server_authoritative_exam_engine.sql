@@ -96,7 +96,7 @@ begin
   end if;
 
   select jsonb_agg(jsonb_build_object(
-    'question_id',q.id,'sequence_no',q.sequence_no,'question',q.question_payload
+    'question_id',q.id,'sequence_no',q.sequence_no,'question',abacus.public_question_payload(q.question_payload)
   ) order by q.sequence_no)
   into v_questions
   from (
