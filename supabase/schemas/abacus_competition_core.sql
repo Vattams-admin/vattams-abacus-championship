@@ -73,6 +73,7 @@ create table if not exists abacus.registrations (
   foreign key (competition_id, age_group_id)
     references abacus.age_groups(competition_id, id),
   unique (competition_id, id),
+  unique (competition_id, age_group_id, id),
   unique (competition_id, student_user_id),
   check ((guardian_user_id is null) or guardian_user_id <> student_user_id),
   check ((eligibility_status <> 'approved') or reviewed_at is not null)
