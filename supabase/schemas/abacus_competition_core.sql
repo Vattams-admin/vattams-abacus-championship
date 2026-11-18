@@ -72,6 +72,7 @@ create table if not exists abacus.registrations (
   updated_at timestamptz not null default now(),
   foreign key (competition_id, age_group_id)
     references abacus.age_groups(competition_id, id),
+  unique (competition_id, id),
   unique (competition_id, student_user_id),
   check ((guardian_user_id is null) or guardian_user_id <> student_user_id),
   check ((eligibility_status <> 'approved') or reviewed_at is not null)
@@ -129,6 +130,7 @@ create table if not exists abacus.exam_attempts (
   created_at timestamptz not null default now(),
   unique (registration_id, attempt_no),
   unique (competition_id, age_group_id, id),
+  unique (competition_id, id),
   unique (idempotency_key),
   foreign key (competition_id, age_group_id)
     references abacus.age_groups(competition_id, id),
