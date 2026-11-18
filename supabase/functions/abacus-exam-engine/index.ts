@@ -36,7 +36,7 @@ Deno.serve(async (req: Request) => {
     if (typeof body.competition_id !== "string") return reply({ error: "Competition ID is required" }, 400, origin);
     rpcName = "exam_start_or_resume"; rpcArgs = { p_user_id: userId, p_competition_id: body.competition_id };
   } else if (action === "save_response") {
-    if (typeof body.attempt_id !== "string" || typeof body.question_id !== "string" || typeof body.response_version !== "number" || !Number.isSafeInteger(body.response_version) || body.response_version < 1 || !Object.prototype.hasOwnProperty.call(body, "response")) return reply({ error: "Invalid response payload" }, 400, origin);
+    if (typeof body.attempt_id !== "string" || typeof body.question_id !== "string" || typeof body.response_version !== "number" || !Number.isSafeInteger(body.response_version) || body.response_version < 1 || typeof body.response !== "string") return reply({ error: "Invalid response payload" }, 400, origin);
     if (JSON.stringify(body.response).length > 12000) return reply({ error: "Response is too large" }, 413, origin);
     rpcName = "exam_save_response";
     rpcArgs = { p_user_id: userId, p_attempt_id: body.attempt_id, p_question_id: body.question_id, p_response: body.response, p_response_version: body.response_version, p_client_saved_at: typeof body.client_saved_at === "string" ? body.client_saved_at : null };
