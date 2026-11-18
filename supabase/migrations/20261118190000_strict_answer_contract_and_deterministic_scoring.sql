@@ -1,5 +1,5 @@
 -- Module 64: strict participant answer contract and deterministic scoring scope.
--- Apply only to Supabase project lqzdyegfhpinmojyrtur after Modules 57, 58, 60 and 62.
+-- Apply only to Supabase project lqzdyegfhpinmoiyrtur after Modules 57, 58, 60 and 62.
 begin;
 
 create or replace function abacus.exam_save_response(
