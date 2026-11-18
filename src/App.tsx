@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase, supabaseConfigured } from "./lib/supabase";
 
-type PortalView = "overview" | "register" | "schedule" | "help";
+type PortalView = "overview" | "register" | "schedule" | "account" | "help";
 
 const nav: { id: PortalView; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "register", label: "Registration" },
   { id: "schedule", label: "Competition" },
+  { id: "account", label: "Sign in" },
   { id: "help", label: "Help & rules" }
 ];
 
@@ -52,6 +54,7 @@ function App() {
         {view === "overview" && <Overview onRegister={() => setView("register")} />}
         {view === "register" && <RegisterInfo />}
         {view === "schedule" && <CompetitionInfo />}
+        {view === "account" && <AccountAccess />}
         {view === "help" && <HelpInfo />}
       </section>
 
@@ -79,6 +82,77 @@ function RegisterInfo() {
 
 function CompetitionInfo() {
   return <div className="panel"><p className="eyebrow">SCHEDULED ONLINE ATTEMPT</p><h2>How the online challenge will work</h2><ol><li>Only approved registrations receive an attempt.</li><li>The server authorises the start time and deadline.</li><li>Questions are delivered without answer keys or scoring data.</li><li>Responses are saved and can recover after a network interruption.</li><li>Final submission is locked and scored on the server.</li><li>Results are published only after moderation and approval.</li></ol><span className="status-tag">No live exam is open yet</span></div>;
+}
+
+function AccountAccess() {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let alive = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (alive) setSignedInEmail(data.user?.email ?? null);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSignedInEmail(session?.user?.email ?? null);
+    });
+    return () => {
+      alive = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  async function sendSignInLink(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    const { error: authError } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: window.location.origin }
+    });
+    setBusy(false);
+    if (authError) setError(authError.message);
+    else setMessage("Check your email for the secure sign-in link. This app does not ask for or store your password.");
+  }
+
+  async function signOut() {
+    if (!supabase) return;
+    const { error: authError } = await supabase.auth.signOut();
+    if (authError) setError(authError.message);
+    else setMessage("You have signed out.");
+  }
+
+  return <div className="panel">
+    <p className="eyebrow">SECURE PARTICIPANT ACCESS</p>
+    <h2>Sign in to your competition account.</h2>
+    {!supabaseConfigured || !supabase ? (
+      <>
+        <p>Authentication is not activated because the dedicated Abacus Supabase URL and publishable key are not configured in this deployment.</p>
+        <span className="status-tag">Supabase connection required</span>
+      </>
+    ) : signedInEmail ? (
+      <>
+        <p>Signed in as <strong>{signedInEmail}</strong>.</p>
+        <p>Registration eligibility and exam access are still controlled by server-side approval; signing in alone does not create an approved competition entry.</p>
+        <button className="primary" onClick={signOut}>Sign out</button>
+      </>
+    ) : (
+      <form className="auth-form" onSubmit={sendSignInLink}>
+        <label htmlFor="participant-email">Email address</label>
+        <input id="participant-email" type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="participant@example.com" />
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Sending link…" : "Email me a secure sign-in link"}</button>
+        <p className="form-note">Use the email address you want associated with your participant account. Guardian verification and competition registration are separate steps.</p>
+      </form>
+    )}
+    {message && <p role="status" className="form-success">{message}</p>}
+    {error && <p role="alert" className="form-error">{error}</p>}
+  </div>;
 }
 
 function HelpInfo() {
