@@ -17,6 +17,7 @@ declare
   v_attempt abacus.exam_attempts%rowtype;
   v_questions jsonb;
   v_count integer;
+  v_key_count integer;
   v_version text;
   v_now timestamptz := clock_timestamp();
 begin
@@ -53,7 +54,7 @@ begin
     if v_now >= v_attempt.deadline_at then
       update abacus.exam_attempts set status='expired', submitted_at=v_now
       where id=v_attempt.id;
-      raise exception 'Exam deadline has passed' using errcode='55000';
+      return jsonb_build_object('attempt_id',v_attempt.id,'status','expired','deadline_at',v_attempt.deadline_at);
     end if;
   else
     if exists (select 1 from abacus.exam_attempts where registration_id=v_registration.id and status in ('submitted','expired','scored','approved')) then
@@ -71,6 +72,17 @@ begin
     ) q;
     if v_count <> v_group.question_count then
       raise exception 'The approved question set is incomplete' using errcode='55000';
+    end if;
+    select count(*) into v_key_count
+    from abacus.question_bank qb
+    join abacus.answer_keys ak on ak.question_id=qb.id
+    where qb.competition_id=p_competition_id and qb.age_group_id=v_group.id
+      and qb.review_status='approved'
+      and qb.id in (select id from abacus.question_bank
+        where competition_id=p_competition_id and age_group_id=v_group.id
+          and review_status='approved' order by sequence_no limit v_group.question_count);
+    if v_key_count <> v_group.question_count then
+      raise exception 'The official answer-key set is incomplete; exam start is blocked' using errcode='55000';
     end if;
     insert into abacus.exam_attempts(
       registration_id,competition_id,age_group_id,attempt_no,status,
@@ -132,10 +144,11 @@ begin
   where a.id=p_attempt_id and r.student_user_id=p_user_id
   for update of a;
   if not found then raise exception 'Attempt not found' using errcode='P0002'; end if;
-  if v_attempt.status <> 'in_progress' or v_now >= v_attempt.deadline_at then
-    if v_attempt.status='in_progress' and v_now >= v_attempt.deadline_at then
-      update abacus.exam_attempts set status='expired',submitted_at=v_now where id=v_attempt.id;
-    end if;
+  if v_attempt.status='in_progress' and v_now >= v_attempt.deadline_at then
+    update abacus.exam_attempts set status='expired',submitted_at=v_now where id=v_attempt.id;
+    return jsonb_build_object('saved',false,'status','expired','server_now',v_now);
+  end if;
+  if v_attempt.status <> 'in_progress' then
     raise exception 'Attempt is not accepting responses' using errcode='55000';
   end if;
   if not exists (
@@ -197,7 +210,7 @@ begin
   end if;
   if v_now >= v_attempt.deadline_at then
     update abacus.exam_attempts set status='expired',submitted_at=v_now where id=v_attempt.id;
-    raise exception 'Attempt deadline has passed' using errcode='55000';
+    return jsonb_build_object('submitted',true,'status','expired','submitted_at',v_now);
   end if;
 
   select coalesce(sum(case when ar.response_payload = ak.correct_answer then qb.marks else 0 end),0),
