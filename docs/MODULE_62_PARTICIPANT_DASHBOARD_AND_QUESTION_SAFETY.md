@@ -8,7 +8,7 @@
 
 ## Scope
 
-This module adds a server-mediated participant competition discovery contract and a recursive redaction helper for public question payloads. It does not open registrations or publish a competition.
+This module adds a server-mediated participant competition discovery contract, a participant dashboard UI, and a recursive redaction helper for public question payloads. It does not open registrations or publish a competition.
 
 ## Database changes
 
@@ -16,6 +16,7 @@ This module adds a server-mediated participant competition discovery contract an
 - `can_start` is a convenience display field only. The exam-start RPC remains authoritative and rechecks consent, approval, competition state and attempt eligibility.
 - `public_question_payload(jsonb)` recursively removes sensitive answer/scoring-related keys from JSON objects and nested arrays.
 - Both functions are revoked from public/anon/authenticated and granted only to service_role. The trusted Edge Function supplies the JWT-derived user UUID.
+- The existing exam-start migration is updated to call `abacus.public_question_payload` before returning each question object.
 
 ## Edge Function changes
 
@@ -30,7 +31,7 @@ Module 60 previously selected and returned `question_payload` directly. This is 
 
 ## Soroban input and UI status
 
-The authentic Japanese Soroban representation is one heaven bead (5) and four earth beads (1 each) per rod. The existing hero illustration depicts this 1+4 structure. The live exam still uses a generic text response field and raw JSON question display. A schema-specific interactive bead renderer is not included in this module because the approved production question payload schema and response format were not available for inspection. Guessing that contract could cause incorrect scoring. This remains an explicit release blocker.
+The authentic Japanese Soroban representation is one heaven bead (5) and four earth beads (1 each) per rod. The existing hero illustration depicts this 1+4 structure. The live exam still uses a generic text response field and raw JSON question display. A schema-specific interactive bead renderer is not included because the approved production question payload schema and response format were not available for inspection. Guessing that contract could cause incorrect scoring. This remains an explicit release blocker.
 
 ## Verification / deployment status
 
