@@ -149,10 +149,14 @@ create unique index if not exists one_live_attempt_per_registration
 
 create table if not exists abacus.attempt_responses (
   id uuid primary key default gen_random_uuid(),
-  attempt_id uuid not null references abacus.exam_attempts(id) on delete cascade,
+  attempt_id uuid not null,
   question_id uuid not null,
-  foreign key (attempt_id) references abacus.exam_attempts(id) on delete cascade,
-  foreign key (question_id) references abacus.question_bank(id),
+  competition_id uuid not null,
+  age_group_id uuid not null,
+  foreign key (competition_id, age_group_id, attempt_id)
+    references abacus.exam_attempts(competition_id, age_group_id, id) on delete cascade,
+  foreign key (competition_id, age_group_id, question_id)
+    references abacus.question_bank(competition_id, age_group_id, id),
   response_payload jsonb,
   response_version integer not null default 1 check (response_version > 0),
   client_saved_at timestamptz,
