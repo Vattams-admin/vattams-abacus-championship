@@ -290,8 +290,6 @@ function AccountAccess() {
 
 function AdminConsole() {
   const [competitionId, setCompetitionId] = useState("");
-  const [competitions, setCompetitions] = useState<CompetitionEntry[]>([]);
-  const [loadingCompetitions, setLoadingCompetitions] = useState(false);
   const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -446,6 +444,8 @@ function ExamQuestionCard({ item, answer, waiting, disabled, onAnswer }: {
 
 function StudentExamRoom() {
   const [competitionId, setCompetitionId] = useState("");
+  const [competitions, setCompetitions] = useState<CompetitionEntry[]>([]);
+  const [loadingCompetitions, setLoadingCompetitions] = useState(false);
   const [session, setSession] = useState<ExamSession | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [versions, setVersions] = useState<Record<string, number>>({});
@@ -539,17 +539,6 @@ function StudentExamRoom() {
     finally { setBusy(false); }
   }
 
-  async function startOrResume() {
-    setBusy(true); setError(""); setMessage("");
-    try {
-      const result = await invokeExam({ action: "start_or_resume", competition_id: competitionId.trim() });
-      if (!result?.attempt_id || !Array.isArray(result.questions)) throw new Error("The exam service returned an incomplete session.");
-      setSession(result as ExamSession);
-      setSubmitted(false);
-      setMessage("Exam session restored. Your official deadline is controlled by the competition server.");
-    } catch (e) { setError(e instanceof Error ? e.message : "Unable to start the exam."); }
-    finally { setBusy(false); }
-  }
 
   function updateAnswer(questionId: string, value: string) {
     const nextVersion = (versions[questionId] ?? 0) + 1;
