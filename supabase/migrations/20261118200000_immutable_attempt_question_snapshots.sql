@@ -101,8 +101,8 @@ begin
       return jsonb_build_object('attempt_id',v_attempt.id,'status','expired','deadline_at',v_attempt.deadline_at);
     end if;
     select count(*) into v_count from abacus.attempt_questions where attempt_id=v_attempt.id;
-    if v_count < 1 then
-      raise exception 'Existing attempt has no immutable question snapshot; reconnect is blocked for integrity' using errcode='55000';
+    if v_count <> v_group.question_count then
+      raise exception 'Existing attempt snapshot is incomplete or does not match its frozen question count; reconnect is blocked for integrity' using errcode='55000';
     end if;
   else
     if exists (
