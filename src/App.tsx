@@ -38,7 +38,7 @@ function App() {
           <div className="orbit orbit-one" /><div className="orbit orbit-two" />
           <div className="soroban">
             <div className="soroban-top" />
-            {Array.from({ length: 7 }).map((_, i) => <div className="rod" key={i}><b /><b /><b /><b /><b /></div>)}
+            {Array.from({ length: 7 }).map((_, i) => <div className="rod" key={i}><div className="heaven-rail"><b className="bead heaven-bead" /></div><div className="earth-rail">{Array.from({ length: 4 }).map((__, beadIndex) => <b className="bead earth-bead" key={beadIndex} />)}</div></div>)}
             <div className="soroban-bar" />
             <div className="soroban-base" />
           </div>
