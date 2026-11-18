@@ -51,8 +51,8 @@ begin
   -- Legacy/free-text questions remain string-valued and are handled by their approved scoring rule.
   if jsonb_typeof(v_question.question_payload->'options') = 'array'
      and not exists (
-       select 1 from jsonb_array_elements_text(v_question.question_payload->'options') option_text
-       where option_text = p_response #>> '{}'
+       select 1 from jsonb_array_elements_text(v_question.question_payload->'options') as options(option_text)
+       where options.option_text = p_response #>> '{}'
      ) then
     raise exception 'Response must match one of the published answer choices' using errcode='22023';
   end if;
