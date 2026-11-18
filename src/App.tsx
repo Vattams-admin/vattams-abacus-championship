@@ -24,25 +24,39 @@ function App() {
         <span className="online-pill"><i /> Online competition portal</span>
       </header>
 
-      <section className="hero">
+      <section className="hero hero-premium">
         <div className="hero-copy">
-          <p className="eyebrow">THINK · CALCULATE · ACHIEVE</p>
-          <h1>Every bead counts.<br /><em>Every second matters.</em></h1>
-          <p className="intro">A dedicated online abacus championship experience. Register, complete eligibility checks and take your scheduled challenge securely online.</p>
+          <div className="hero-kicker"><span className="kicker-dot" /> INTERNATIONAL ONLINE CHAMPIONSHIP</div>
+          <p className="eyebrow">VATTAMS · SOROBAN CHALLENGE</p>
+          <h1>Think faster.<br /><em>Calculate smarter.</em></h1>
+          <p className="intro">A focused online Soroban championship built around speed, accuracy and confident mental calculation. Prepare, qualify and compete in a secure scheduled challenge.</p>
           <div className="hero-actions">
             <button className="primary" onClick={() => setView("register")}>Explore registration <span>→</span></button>
-            <button className="secondary" onClick={() => setView("schedule")}>Competition process</button>
+            <button className="secondary" onClick={() => setView("schedule")}>How the challenge works</button>
+          </div>
+          <div className="hero-proof">
+            <span><b>01 + 04</b><small>Authentic Soroban</small></span>
+            <span><b>ONLINE</b><small>Scheduled challenge</small></span>
+            <span><b>SECURE</b><small>Verified results</small></span>
           </div>
         </div>
-        <div className="hero-art" aria-hidden="true">
-          <div className="orbit orbit-one" /><div className="orbit orbit-two" />
-          <div className="soroban">
-            <div className="soroban-top" />
-            {Array.from({ length: 7 }).map((_, i) => <div className="rod" key={i}><div className="heaven-rail"><b className="bead heaven-bead" /></div><div className="earth-rail">{Array.from({ length: 4 }).map((__, beadIndex) => <b className="bead earth-bead" key={beadIndex} />)}</div></div>)}
-            <div className="soroban-bar" />
-            <div className="soroban-base" />
+        <div className="hero-visual">
+          <div className="visual-glow" />
+          <div className="visual-topline"><span>JAPANESE METHOD</span><span className="live-indicator"><i /> COMPETITION PORTAL</span></div>
+          <div className="hero-art" aria-label="Japanese Soroban with one heaven bead and four earth beads per rod">
+            <div className="orbit orbit-one" /><div className="orbit orbit-two" />
+            <div className="soroban">
+              <div className="soroban-top" />
+              {Array.from({ length: 10 }).map((_, i) => <div className="rod" key={i}><div className="heaven-rail"><b className="bead heaven-bead" /></div><div className="earth-rail">{Array.from({ length: 4 }).map((__, beadIndex) => <b className="bead earth-bead" key={beadIndex} />)}</div></div>)}
+              <div className="soroban-bar" />
+              <div className="soroban-base" />
+            </div>
           </div>
-          <span className="art-caption">FOCUS / SPEED / ACCURACY</span>
+          <div className="soroban-legend">
+            <span><b>1</b><small>Upper bead · value 5</small></span>
+            <span><b>4</b><small>Lower beads · value 1 each</small></span>
+          </div>
+          <div className="visual-caption">COUNT <i>·</i> CALCULATE <i>·</i> EXCEL</div>
         </div>
       </section>
 
