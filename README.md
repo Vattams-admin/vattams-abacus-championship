@@ -35,8 +35,8 @@ Standalone online Japanese Soroban competition platform.
 
 ## Registration workflow and gates
 1. Participant signs in with a verified email.
-2. Participant creates a time-limited registration intent with competition slug, display name, date of birth and guardian email.
-3. Guardian signs in with a separate verified account, supplies the request reference and explicitly accepts the consent summary.
+2. Participant creates a time-limited consent request with competition slug and guardian email only; no child name or date of birth is collected at this step.
+3. Guardian signs in with a separate verified account, supplies the request reference, reviews the consent summary, then enters participant name/date of birth and explicitly accepts consent.
 4. Server verifies guardian email matches the request, checks competition registration status/window, consent/rules version and published age cut-off, then resolves exactly one age band.
 5. Server atomically creates a registration with pending eligibility and records an audit event. This does not grant exam access.
 
