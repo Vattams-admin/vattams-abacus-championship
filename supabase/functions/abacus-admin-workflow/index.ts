@@ -89,7 +89,7 @@ Deno.serve(async (req: Request) => {
   }
 
   if (action === "review_registration") {
-    if (!["super_admin", "competition_admin", "reviewer"].includes(role.role)) {
+    if (!["super_admin", "competition_admin", "reviewer"].includes(role)) {
       return json({ error: "Eligibility reviewer permission required" }, 403, origin);
     }
     const registrationId = body.registration_id;
