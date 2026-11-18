@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase, supabaseConfigured } from "./lib/supabase";
 
-type PortalView = "overview" | "register" | "schedule" | "account" | "admin" | "help";
+type PortalView = "overview" | "register" | "schedule" | "exam" | "account" | "admin" | "help";
 
 const nav: { id: PortalView; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "register", label: "Registration" },
   { id: "schedule", label: "Competition" },
+  { id: "exam", label: "Exam room" },
   { id: "account", label: "Sign in" },
   { id: "admin", label: "Admin" },
   { id: "help", label: "Help & rules" }
@@ -75,6 +76,7 @@ function App() {
         {view === "overview" && <Overview onRegister={() => setView("register")} />}
         {view === "register" && <RegisterInfo />}
         {view === "schedule" && <CompetitionInfo />}
+        {view === "exam" && <StudentExamRoom />}
         {view === "account" && <AccountAccess />}
         {view === "admin" && <AdminConsole />}
         {view === "help" && <HelpInfo />}
@@ -397,6 +399,185 @@ function AdminConsole() {
         <button className="primary" type="submit" disabled={busy}>{busy ? "Submitting…" : "Submit eligibility decision"}</button>
       </form>
     </>}
+    {message && <p role="status" className="form-success">{message}</p>}
+    {error && <p role="alert" className="form-error">{error}</p>}
+  </div>;
+}
+
+
+type ExamQuestion = { question_id: string; sequence_no: number; question: unknown };
+type ExamSession = { attempt_id: string; status: string; started_at: string; server_now: string; deadline_at: string; questions: ExamQuestion[] };
+type QueuedAnswer = { response: string; response_version: number; client_saved_at: string };
+
+function StudentExamRoom() {
+  const [competitionId, setCompetitionId] = useState("");
+  const [session, setSession] = useState<ExamSession | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [versions, setVersions] = useState<Record<string, number>>({});
+  const [pending, setPending] = useState<Record<string, QueuedAnswer>>({});
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [signedIn, setSignedIn] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+    supabase.auth.getUser().then(({ data }) => { if (active) setSignedIn(Boolean(data.user)); });
+    const { data } = supabase.auth.onAuthStateChange((_event, current) => setSignedIn(Boolean(current?.user)));
+    return () => { active = false; data.subscription.unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    const onOnline = () => setOnline(true);
+    const onOffline = () => setOnline(false);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => { window.removeEventListener("online", onOnline); window.removeEventListener("offline", onOffline); };
+  }, []);
+
+  useEffect(() => {
+    if (!session || submitted) return;
+    const serverOffset = new Date(session.server_now).getTime() - Date.now();
+    const deadline = new Date(session.deadline_at).getTime();
+    const update = () => setRemaining(Math.max(0, Math.ceil((deadline - (Date.now() + serverOffset)) / 1000)));
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [session, submitted]);
+
+  useEffect(() => {
+    if (!session) return;
+    try {
+      const saved = localStorage.getItem("vattams-abacus-exam-" + session.attempt_id);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, QueuedAnswer>;
+        setPending(parsed);
+        setAnswers(Object.fromEntries(Object.entries(parsed).map(([id, value]) => [id, value.response])));
+        setVersions(Object.fromEntries(Object.entries(parsed).map(([id, value]) => [id, value.response_version])));
+      }
+    } catch { setError("Saved offline responses could not be read. Keep this tab open and contact support before continuing."); }
+  }, [session?.attempt_id]);
+
+  async function invokeExam(payload: Record<string, unknown>) {
+    if (!supabase) throw new Error("Participant authentication is not configured.");
+    const { data, error: invokeError } = await supabase.functions.invoke("abacus-exam-engine", { body: payload });
+    if (invokeError) throw new Error(invokeError.message);
+    if (data?.error) throw new Error(data.error);
+    return data?.result;
+  }
+
+  async function startOrResume() {
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const result = await invokeExam({ action: "start_or_resume", competition_id: competitionId.trim() });
+      if (!result?.attempt_id || !Array.isArray(result.questions)) throw new Error("The exam service returned an incomplete session.");
+      setSession(result as ExamSession);
+      setSubmitted(false);
+      setMessage("Exam session restored. Your official deadline is controlled by the competition server.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to start the exam."); }
+    finally { setBusy(false); }
+  }
+
+  function updateAnswer(questionId: string, value: string) {
+    const nextVersion = (versions[questionId] ?? 0) + 1;
+    const queued = { response: value, response_version: nextVersion, client_saved_at: new Date().toISOString() };
+    setAnswers(current => ({ ...current, [questionId]: value }));
+    setVersions(current => ({ ...current, [questionId]: nextVersion }));
+    setPending(current => {
+      const next = { ...current, [questionId]: queued };
+      if (session) {
+        try { localStorage.setItem("vattams-abacus-exam-" + session.attempt_id, JSON.stringify(next)); }
+        catch { setError("Device storage is full. Your latest response may not survive a refresh."); }
+      }
+      return next;
+    });
+  }
+
+  async function flushPending() {
+    if (!session) return;
+    const entries = Object.entries(pending);
+    for (const [questionId, item] of entries) {
+      await invokeExam({
+        action: "save_response", attempt_id: session.attempt_id, question_id: questionId,
+        response: item.response, response_version: item.response_version, client_saved_at: item.client_saved_at
+      });
+      setPending(current => {
+        const next = { ...current };
+        if (next[questionId]?.response_version === item.response_version) delete next[questionId];
+        try { localStorage.setItem("vattams-abacus-exam-" + session.attempt_id, JSON.stringify(next)); } catch { /* keep server copy */ }
+        return next;
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (!session || !online || submitted || Object.keys(pending).length === 0) return;
+    const timer = window.setTimeout(() => {
+      flushPending().then(() => setMessage("All current answers are saved on the competition server."))
+        .catch(e => setError(e instanceof Error ? e.message : "Autosave failed; your local queue is retained."));
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [session, online, pending, submitted]);
+
+  async function submitExam() {
+    if (!session || !online || submitted || remaining === 0) return;
+    if (!window.confirm("Submit your answers now? You cannot change them after submission.")) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await flushPending();
+      await invokeExam({ action: "submit", attempt_id: session.attempt_id });
+      setSubmitted(true);
+      setMessage("Your submission has been received. Results remain withheld until official moderation.");
+      try { localStorage.removeItem("vattams-abacus-exam-" + session.attempt_id); } catch { /* no-op */ }
+    } catch (e) { setError(e instanceof Error ? e.message : "Submission failed. Your saved responses remain available for retry."); }
+    finally { setBusy(false); }
+  }
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return m + ":" + s;
+  };
+
+  return <div className="panel exam-room">
+    <p className="eyebrow">LIVE COMPETITION · PARTICIPANT EXAM ROOM</p>
+    <h2>Official Soroban challenge</h2>
+    {!supabaseConfigured || !supabase ? <p className="form-error">The dedicated competition authentication connection is not configured in this deployment.</p> :
+      !signedIn ? <><p>Sign in with your verified participant account before entering the exam room.</p><button className="secondary" onClick={() => window.dispatchEvent(new CustomEvent("abacus:navigate", { detail: "account" }))}>Go to secure sign in</button></> :
+      !session ? <form className="auth-form" onSubmit={event => { event.preventDefault(); void startOrResume(); }}>
+        <label htmlFor="exam-competition-id">Competition ID supplied in your official invitation</label>
+        <input id="exam-competition-id" value={competitionId} onChange={event => setCompetitionId(event.target.value)} required placeholder="Competition UUID" />
+        <button className="primary" disabled={busy || !online}>{busy ? "Checking eligibility…" : "Start / resume my exam"}</button>
+        <p className="form-note">The server checks registration, guardian consent, eligibility, competition status and attempt limits. Reconnecting restores the same active attempt.</p>
+      </form> :
+      <>
+        <div className="exam-status-row">
+          <span className={online ? "connection-state connected" : "connection-state"}>{online ? "● Connected" : "● Offline · answers queued"}</span>
+          <strong className="exam-clock" aria-live="off">{remaining === null ? "--:--" : formatTime(remaining)}</strong>
+        </div>
+        <p className="form-note">Server deadline: {new Date(session.deadline_at).toLocaleString()} · Attempt: {session.attempt_id}</p>
+        {remaining === 0 && <p role="alert" className="form-error">The displayed deadline has passed. Editing and submission are disabled; reconnect to let the server finalize the attempt state.</p>}
+        <div className="exam-question-list">
+          {session.questions.map((item) => <article className="exam-question" key={item.question_id}>
+            <div className="question-heading"><span>QUESTION {item.sequence_no}</span><span>{pending[item.question_id] ? "Waiting to sync" : "Response saved / not changed"}</span></div>
+            <pre>{typeof item.question === "string" ? item.question : JSON.stringify(item.question, null, 2)}</pre>
+            <label htmlFor={"answer-" + item.question_id}>Your answer</label>
+            <input id={"answer-" + item.question_id} value={answers[item.question_id] ?? ""}
+              onChange={event => updateAnswer(item.question_id, event.target.value)}
+              disabled={submitted || remaining === 0} autoComplete="off" />
+          </article>)}
+        </div>
+        <div className="exam-actions">
+          <button className="secondary" onClick={() => void flushPending().then(() => setMessage("All current answers are saved on the competition server.")).catch(e => setError(e.message))} disabled={busy || !online || Object.keys(pending).length === 0}>Save now</button>
+          <button className="primary" onClick={() => void submitExam()} disabled={busy || !online || submitted || remaining === 0}>{busy ? "Submitting…" : submitted ? "Submitted" : "Submit final answers"}</button>
+        </div>
+        <p className="form-note">Local pending answers are kept on this device during network interruptions. Server confirmation is required before they count as saved.</p>
+      </>
+    }
     {message && <p role="status" className="form-success">{message}</p>}
     {error && <p role="alert" className="form-error">{error}</p>}
   </div>;
