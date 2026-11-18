@@ -93,6 +93,7 @@ create table if not exists abacus.question_bank (
   created_at timestamptz not null default now(),
   unique (competition_id, age_group_id, question_code),
   unique (competition_id, age_group_id, sequence_no),
+  unique (competition_id, age_group_id, id),
   check ((review_status <> 'approved') or (approved_by is not null and approved_at is not null))
 );
 
@@ -127,7 +128,12 @@ create table if not exists abacus.exam_attempts (
   scored_at timestamptz,
   created_at timestamptz not null default now(),
   unique (registration_id, attempt_no),
+  unique (competition_id, age_group_id, id),
   unique (idempotency_key),
+  foreign key (competition_id, age_group_id)
+    references abacus.age_groups(competition_id, id),
+  foreign key (competition_id, age_group_id, registration_id)
+    references abacus.registrations(competition_id, age_group_id, id),
   check (deadline_at > scheduled_start_at),
   check (submitted_at is null or started_at is not null),
   check (status not in ('scored','approved') or scored_at is not null)
@@ -140,7 +146,9 @@ create unique index if not exists one_live_attempt_per_registration
 create table if not exists abacus.attempt_responses (
   id uuid primary key default gen_random_uuid(),
   attempt_id uuid not null references abacus.exam_attempts(id) on delete cascade,
-  question_id uuid not null references abacus.question_bank(id),
+  question_id uuid not null,
+  foreign key (attempt_id) references abacus.exam_attempts(id) on delete cascade,
+  foreign key (question_id) references abacus.question_bank(id),
   response_payload jsonb,
   response_version integer not null default 1 check (response_version > 0),
   client_saved_at timestamptz,
@@ -160,6 +168,8 @@ create table if not exists abacus.result_publications (
   approved_by uuid not null references auth.users(id),
   approved_at timestamptz not null default now(),
   published_at timestamptz,
+  foreign key (competition_id, registration_id) references abacus.registrations(competition_id, id),
+  foreign key (competition_id, attempt_id) references abacus.exam_attempts(competition_id, id),
   unique (competition_id, registration_id),
   unique (attempt_id)
 );
