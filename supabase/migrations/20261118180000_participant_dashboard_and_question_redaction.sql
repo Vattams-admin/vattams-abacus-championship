@@ -1,5 +1,5 @@
 -- Module 62: participant-safe competition discovery and recursive question payload redaction.
--- Apply only to Supabase project lqzdyegfhpinmojyrtur after Modules 57, 58 and 60.
+-- Apply only to Supabase project lqzdyegfhpinmoiyrtur after Modules 57, 58 and 60.
 begin;
 
 create or replace function abacus.public_question_payload(p_value jsonb)
