@@ -16,7 +16,9 @@ for (const key of [
 ]) {
   assert.ok(normalizedKeys.has(key), `missing redaction alias: ${key}`);
 }
+assert.match(sql, /v_normalized_key !~ .*answer.*correct.*solution/s, "unknown answer-like key variants must be denied");
 assert.match(sql, /jsonb_each\(p_value\)/, "redaction must recurse through JSON objects");
 assert.match(sql, /jsonb_array_elements\(p_value\)/, "redaction must recurse through JSON arrays");
+assert.match(sql, /under_review/, "participant dashboard must agree with the one-attempt server gate");
 assert.match(sql, /grant execute on function abacus\.public_question_payload\(jsonb\) to service_role/i);
 console.log("Question redaction contract checks passed.");
