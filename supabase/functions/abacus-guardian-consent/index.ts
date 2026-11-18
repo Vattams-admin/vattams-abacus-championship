@@ -39,10 +39,10 @@ Deno.serve(async (req: Request) => {
     const intentId = typeof body.intent_id === "string" ? body.intent_id : "";
     const displayName = typeof body.student_display_name === "string" ? body.student_display_name.trim() : "";
     const dob = typeof body.date_of_birth === "string" ? body.date_of_birth : "";
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(intentId)) return reply({ error: "Invalid consent request reference" }, 400);
-    if (body.consent_accepted !== true) return reply({ error: "Guardian must explicitly accept the consent statement" }, 400);
-    if (displayName.length < 2 || displayName.length > 120) return reply({ error: "Enter a valid participant name" }, 400);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || Number.isNaN(Date.parse(dob + "T00:00:00Z")) || new Date(dob + "T00:00:00Z").toISOString().slice(0, 10) !== dob) return reply({ error: "Enter date of birth in YYYY-MM-DD format" }, 400);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(intentId)) return reply({ error: "Invalid consent request reference" }, 400, origin);
+    if (body.consent_accepted !== true) return reply({ error: "Guardian must explicitly accept the consent statement" }, 400, origin);
+    if (displayName.length < 2 || displayName.length > 120) return reply({ error: "Enter a valid participant name" }, 400, origin);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || Number.isNaN(Date.parse(dob + "T00:00:00Z")) || new Date(dob + "T00:00:00Z").toISOString().slice(0, 10) !== dob) return reply({ error: "Enter date of birth in YYYY-MM-DD format" }, 400, origin);
     const { data, error } = await admin.rpc("abacus_confirm_guardian_registration", {
       p_intent_id: intentId,
       p_guardian_user_id: user.id,
@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
       p_student_display_name: displayName,
       p_date_of_birth: dob,
     });
-    if (error) return reply({ error: error.message }, error.code === "42501" ? 403 : error.code === "23505" ? 409 : 400);
+    if (error) return reply({ error: error.message }, error.code === "42501" ? 403 : error.code === "23505" ? 409 : 400, origin);
     return reply({ ...data, message: "Guardian consent recorded. Registration is submitted for eligibility review; this does not grant exam access." }, 201, origin);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Request could not be processed";
