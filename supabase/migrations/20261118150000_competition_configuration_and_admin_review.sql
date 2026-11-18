@@ -217,6 +217,7 @@ begin
     raise exception 'Only submitted registrations can be reviewed' using errcode = '55000';
   end if;
   update abacus.registrations set eligibility_status=p_decision,
+    registration_status=case when p_decision='approved' then 'confirmed' else registration_status end,
     reviewed_by=p_actor_user_id,reviewed_at=now(),review_note=left(p_note,1000),updated_at=now()
   where id=p_registration_id;
   insert into abacus.audit_events(actor_user_id,actor_kind,action,entity_type,entity_id,metadata)
