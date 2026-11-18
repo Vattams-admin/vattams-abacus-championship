@@ -132,8 +132,6 @@ function RegisterInfo() {
     const { data, error: invokeError } = await supabase.functions.invoke("abacus-registration-intent", {
       body: {
         competition_slug: competitionSlug.trim(),
-        student_display_name: displayName.trim(),
-        date_of_birth: dob,
         guardian_email: guardianEmail.trim().toLowerCase()
       }
     });
@@ -151,7 +149,12 @@ function RegisterInfo() {
     if (!supabase) return;
     setBusy(true); setError(""); setMessage("");
     const { data, error: invokeError } = await supabase.functions.invoke("abacus-guardian-consent", {
-      body: { intent_id: intentId.trim(), consent_accepted: consentAccepted }
+      body: {
+        intent_id: intentId.trim(),
+        consent_accepted: consentAccepted,
+        student_display_name: displayName.trim(),
+        date_of_birth: dob
+      }
     });
     setBusy(false);
     if (invokeError) setError(invokeError.message);
@@ -181,20 +184,20 @@ function RegisterInfo() {
           <form className="auth-form" onSubmit={submitIntent}>
             <label htmlFor="competition-slug">Competition code</label>
             <input id="competition-slug" required maxLength={80} value={competitionSlug} onChange={e => setCompetitionSlug(e.target.value)} placeholder="Official competition code" />
-            <label htmlFor="student-display-name">Participant name</label>
-            <input id="student-display-name" required minLength={2} maxLength={120} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Name as it should appear on the entry" />
-            <label htmlFor="student-dob">Date of birth</label>
-            <input id="student-dob" type="date" required value={dob} onChange={e => setDob(e.target.value)} />
             <label htmlFor="guardian-email">Parent / guardian email</label>
             <input id="guardian-email" type="email" required maxLength={254} value={guardianEmail} onChange={e => setGuardianEmail(e.target.value)} placeholder="parent@example.com" />
             <button className="primary" type="submit" disabled={busy}>{busy ? "Creating secure request…" : "Create guardian consent request"}</button>
-            <p className="form-note">The request is private and expires after 24 hours. It does not create an approved registration or exam attempt. The named guardian must sign in separately to confirm consent.</p>
+            <p className="form-note">This first step stores only the student account reference and guardian email. It does not collect the participant name or date of birth. The request expires after 24 hours; the guardian enters participant details only after signing in separately and reviewing the consent statement.</p>
           </form>
         ) : (
           <form className="auth-form" onSubmit={confirmConsent}>
             <label htmlFor="consent-intent-id">Student request reference</label>
             <input id="consent-intent-id" required value={intentId} onChange={e => setIntentId(e.target.value)} placeholder="Paste the request UUID shared by the student" />
-            <label className="consent-check"><input type="checkbox" checked={consentAccepted} onChange={e => setConsentAccepted(e.target.checked)} required /> I am the parent / legal guardian using the verified email address named in this request. I have reviewed and agree to the competition consent terms shown by the organiser.</label>
+            <label htmlFor="guardian-student-name">Participant name</label>
+            <input id="guardian-student-name" required minLength={2} maxLength={120} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Name as it should appear on the entry" />
+            <label htmlFor="guardian-student-dob">Participant date of birth</label>
+            <input id="guardian-student-dob" type="date" required value={dob} onChange={e => setDob(e.target.value)} />
+            <label className="consent-check"><input type="checkbox" checked={consentAccepted} onChange={e => setConsentAccepted(e.target.checked)} required /> I am the parent / legal guardian using the verified email address named in this request. I have reviewed the consent summary above and authorise processing of the participant details I am submitting for this competition.</label>
             <button className="primary" type="submit" disabled={busy || !consentAccepted}>{busy ? "Confirming consent…" : "Confirm guardian consent"}</button>
             <div className="consent-summary"><strong>Guardian consent summary</strong><p>I confirm that I am the parent or legal guardian of this participant. I authorise VATTAMS Abacus Beads Championship to process the participant details supplied for competition registration, age-group eligibility review, participant support and competition administration under the published competition rules and privacy notice.</p><small>Consent / rules version: {consentVersion || "Version is checked by the server"}</small></div><p className="form-note">Your signed-in email must exactly match the guardian email on the request. The full privacy notice and final consent wording must be published before public registration opens. A successful confirmation submits the entry for eligibility review; it does not grant exam access.</p>
           </form>
