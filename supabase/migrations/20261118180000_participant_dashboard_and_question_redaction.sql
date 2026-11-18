@@ -11,12 +11,12 @@ as $$
 declare
   v_result jsonb;
   v_key text;
+  v_normalized_key text;
   v_value jsonb;
   v_array jsonb;
   v_item jsonb;
-  -- Keys are compared after lowercasing and removing punctuation. Include both
-  -- snake_case and camelCase-normalized spellings so JSON naming style cannot
-  -- bypass participant-side answer/scoring redaction.
+  -- Explicit aliases cover known contracts; the deny-pattern below also catches
+  -- unanticipated camelCase, kebab-case and suffixed variants.
   v_sensitive constant text[] := array[
     'answer','answers','answertext','answertexts','correct','correctanswer',
     'correctanswers','correctanswertext','correctanswerindex','correctanswersindex',
@@ -40,7 +40,9 @@ begin
     when 'object' then
       v_result := '{}'::jsonb;
       for v_key, v_value in select key, value from jsonb_each(p_value) loop
-        if lower(regexp_replace(v_key, '[^a-zA-Z0-9_]', '', 'g')) <> all(v_sensitive) then
+        v_normalized_key := lower(regexp_replace(v_key, '[^a-zA-Z0-9_]', '', 'g'));
+        if v_normalized_key <> all(v_sensitive)
+           and v_normalized_key !~ '(answer|correct|solution|rationale|explanation|scoring|grading|rubric|mark|score|point|private.?notes?|review.?status|approved.?by|approved.?at)' then
           v_result := v_result || jsonb_build_object(v_key, abacus.public_question_payload(v_value));
         end if;
       end loop;
@@ -88,7 +90,7 @@ as $$
       and not exists (
         select 1 from abacus.exam_attempts a
         where a.registration_id = r.id
-          and a.status in ('submitted','expired','scored','approved')
+          and a.status in ('submitted','expired','scored','approved','under_review')
       )
     )
   ) order by c.starts_at nulls last, c.title), '[]'::jsonb)
