@@ -74,3 +74,22 @@ button,a{font:inherit}.shell{max-width:1180px;margin:auto;padding:0 30px}.topbar
 .consent-check{display:flex;align-items:flex-start;gap:10px;color:#c5d0df!important;font-size:12px!important;line-height:1.6}
 .consent-check input{width:18px;height:18px;flex:0 0 auto;accent-color:#d7b66c;margin-top:1px}
 .auth-form code{overflow-wrap:anywhere;color:#f0d28a}
+
+
+/* Module 61 — responsive participant exam room */
+.exam-room{max-width:900px}
+.exam-status-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:22px 0 8px;padding:14px 16px;border:1px solid #d7b66c55;border-radius:12px;background:#d7b66c0b}
+.connection-state{font-size:11px;color:#ffb2a6;font-weight:700}
+.connection-state.connected{color:#8ee0b2}
+.exam-clock{font:800 clamp(25px,5vw,38px) Manrope;color:#f4d88e;font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.exam-question-list{display:grid;gap:14px;margin:20px 0}
+.exam-question{padding:17px;border:1px solid #ffffff20;border-radius:12px;background:#0c1728}
+.question-heading{display:flex;justify-content:space-between;gap:12px;color:#e7c77f;font-size:10px;font-weight:800;letter-spacing:.1em}
+.question-heading span+span{color:#91a1b7;font-weight:500;letter-spacing:0;text-align:right}
+.exam-question pre{white-space:pre-wrap;overflow-wrap:anywhere;color:#e5ebf4;font:500 13px/1.7 "DM Sans",sans-serif;margin:14px 0}
+.exam-question label{display:block;color:#e5c77f;font-size:11px;font-weight:700;margin-bottom:7px}
+.exam-question input{width:100%;border:1px solid #ffffff35;background:#07101e;color:#f4f6fb;border-radius:8px;padding:13px 14px;font:inherit}
+.exam-question input:focus{outline:2px solid #d7b66c;outline-offset:2px}
+.exam-question input:disabled{opacity:.7}
+.exam-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin:18px 0}
+@media(max-width:560px){.exam-status-row{align-items:flex-start;flex-direction:column}.exam-actions{flex-direction:column}.exam-actions button{width:100%}.question-heading{flex-direction:column}.question-heading span+span{text-align:left}}
