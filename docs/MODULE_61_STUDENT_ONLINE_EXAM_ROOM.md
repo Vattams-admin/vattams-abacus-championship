@@ -3,7 +3,7 @@
 **Date:** 2026-11-18  
 **Repository:** Vattams-admin/vattams-abacus-championship  
 **Branch:** feat/abacus-standalone-app  
-**Supabase project boundary:** lqzdyegfhpinmojyrtur only  
+**Supabase project boundary:** lqzdyegfhpinmoiyrtur only  
 **Deployment target:** Cloudflare Pages only
 
 ## Goal
@@ -48,19 +48,15 @@ Add the participant-facing exam room that consumes the Module 60 server-authorit
 - Competition invitation/UUID discovery, explicit exam instructions, accessibility audit, keyboard/screen-reader test, mobile browser test, and device/network interruption E2E tests remain required.
 - No production data or participant fixtures were created.
 
-## Verification status on 2026-11-18
+## Verified deployment status — 2026-11-18
 
-- GitHub source writes were made on `feat/abacus-standalone-app`; `main` was not changed.
-- Supabase access to the exact permitted project `lqzdyegfhpinmojyrtur` continues to return `MCP error -32600: You do not have permission to perform this action`. No other project was accessed. No migrations or functions were deployed.
-- No Cloudflare tools were available in this session. No Pages project, secrets, DNS, or deployment was changed.
-- No local install, TypeScript build, browser, accessibility, or authenticated end-to-end test was run. The exam room source is not verified production-ready.
+- GitHub repository access is confirmed with admin, maintain, push, pull and triage permissions. All current changes remain on `feat/abacus-standalone-app`; `main` was not modified.
+- Only Supabase project `lqzdyegfhpinmoiyrtur` was accessed. It is healthy, but live migration history contains eight migrations only through `20261118083807`; the exam-engine, participant-dashboard and strict-scoring migrations in this branch are not applied.
+- Live counts are zero for competitions, age groups, question bank, answer keys, registrations, exam attempts and responses. The participant dashboard therefore has no production competition entries to display.
+- The live database has no `participant_list_my_competitions`, `exam_start_or_resume`, `exam_save_response` or `exam_submit_and_score` RPC. The `abacus-exam-engine` Edge Function is not deployed; only the two registration-related functions are active.
+- The Cloudflare log previously supplied confirms a successful build/publish for commit `6e86dca2fdac0585eb5695d51f8ea1b27ae1043c`, not the current branch head. It reported missing build variables, an ignored catch-all redirect warning and four high-severity npm audit findings. No newer deployment was verified.
+- No Cloudflare tool is exposed in this session. No Pages settings, secrets, DNS or deployment were changed. No production migrations, data seeds, or merges were performed in this verification pass.
 
-## Next steps
+## Release decision
 
-1. Restore Supabase tool access to the one permitted project and deploy Modules 57, 58 and 60 in order.
-2. Confirm the deployed Edge Function and database contract with real test accounts and non-production fixtures.
-3. Define and implement the official question rendering/answer schema.
-4. Add a participant dashboard that discovers approved competition entries without exposing other registrations.
-5. Add robust offline queue recovery, retry limits and explicit server-saved indicators.
-6. Run mobile, accessibility, concurrency, security and full exam E2E tests.
-7. Deploy the verified branch build to Cloudflare Pages only.
+**Not production-ready.** The student room is implemented in source, but it cannot run a real online competition until the database RPCs and exam Edge Function are deployed, the browser-safe Supabase variables are configured in Cloudflare Pages, official question content passes independent review, and authenticated end-to-end testing succeeds.
