@@ -3,7 +3,7 @@
 **Date:** 2026-11-18  
 **Repository:** Vattams-admin/vattams-abacus-championship  
 **Branch:** feat/abacus-standalone-app  
-**Only permitted Supabase project:** lqzdyegfhpinmojyrtur  
+**Only permitted Supabase project:** lqzdyegfhpinmoiyrtur  
 **Deployment target:** Cloudflare Pages only
 
 ## Objective
@@ -66,19 +66,19 @@ Implement the core live online competition lifecycle. The browser is an untruste
 - Add client exam screen integration, local draft queue, retry/backoff and accessible timer. The current Module 60 source adds the secure backend contract; it does not yet constitute a finished student-facing exam screen.
 - Verify production database policies, function logs, and Cloudflare Pages deployment commit before opening the competition.
 
-## Known blockers / verification status on 2026-11-18
+## Verified deployment status — 2026-11-18
 
-- GitHub writes succeeded on `feat/abacus-standalone-app`. `main` was not modified.
-- Supabase tool calls to `get_project`, `list_migrations` and `list_tables` for exactly `lqzdyegfhpinmojyrtur` returned `MCP error -32600: You do not have permission to perform this action`. No other project was accessed; no migration or Edge Function was deployed.
-- No Cloudflare connector/tool was exposed in the available tool list. No Cloudflare settings, secrets, DNS or deployment were changed.
-- No local dependency install, SQL execution, TypeScript build, Deno check, browser test or authenticated end-to-end test was run. Do not describe this module as production-ready.
-- Module 58 role-string defect was corrected in source, but the corrected function is not deployed until Supabase access is restored.
+- GitHub repository permission check confirms admin, maintain, push, pull and triage permissions. Work remains on `feat/abacus-standalone-app`; `main` was not changed.
+- The only accessed Supabase project is `lqzdyegfhpinmoiyrtur`. It is `ACTIVE_HEALTHY` in `ap-south-1`, PostgreSQL 17.12.
+- Live migration history contains eight migrations through `20261118083807`. The branch contains later modules 57–65, but Modules 57–65 are not represented in the live migration history; Module 64 and Module 65 are not applied.
+- Live database inspection found zero rows in competitions, age groups, question bank, answer keys, registrations, exam attempts, attempt responses and registration intents.
+- Live RPC inspection found none of the four required participant/exam RPCs: `participant_list_my_competitions`, `exam_start_or_resume`, `exam_save_response` and `exam_submit_and_score`.
+- Only `abacus-registration-intent` v2 and `abacus-guardian-consent` v2 are active Edge Functions. `abacus-exam-engine` is not deployed.
+- Security advisor reports 12 private `abacus` tables with RLS enabled and no policies. This is consistent with the intended server-only schema boundary; do not add broad browser policies. Performance advisor reports two unindexed foreign keys on `registration_intents`; 20 unused-index notices should be evaluated only after traffic exists.
+- The Cloudflare build log previously supplied proves a successful Pages build and publish for commit `6e86dca2fdac0585eb5695d51f8ea1b27ae1043c`. It also reports no build environment variables, an ignored catch-all redirect due to an infinite-loop warning, and four high-severity npm audit findings. The current branch head has advanced beyond that deployed commit; no newer deployment was verified in this check.
+- No Cloudflare connector is available in this session, so Pages environment variables, redirects, DNS or deployments were not changed. The frontend requires only `VITE_ABACUS_SUPABASE_URL` and `VITE_ABACUS_SUPABASE_PUBLISHABLE_KEY`; never put a service-role/secret key in a `VITE_` variable.
+- No production database writes, migrations, function deployments, seed data, or merges were performed in this verification pass. A prior Cloudflare build success does not prove the full registration-to-exam-to-scoring flow.
 
-## Next steps
+## Release decision
 
-1. Restore tool access for the exact Supabase project; inspect live migration state before applying anything.
-2. Apply migrations in timestamp order and deploy the two Edge Functions.
-3. Add automated SQL/function tests and verify no response can read answer-key material.
-4. Integrate the student-facing exam UI with reconnect and offline-safe autosave.
-5. Run build, browser and authenticated E2E tests.
-6. Deploy the verified feature-branch commit to Cloudflare Pages only.
+**Not production-ready.** The frontend has a successful historical Pages build, but the live competition data is empty, exam RPCs and exam Edge Function are absent, later migrations remain unapplied, official question content is pending independent review, and end-to-end tests remain outstanding.
