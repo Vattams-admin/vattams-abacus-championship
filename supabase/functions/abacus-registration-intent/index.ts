@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -31,20 +30,17 @@ Deno.serve(async (req: Request) => {
     const user = await verifiedUser(req, admin);
     const body = await req.json();
     const competitionSlug = typeof body.competition_slug === "string" ? body.competition_slug.trim() : "";
-    const displayName = typeof body.student_display_name === "string" ? body.student_display_name.trim() : "";
-    const dob = typeof body.date_of_birth === "string" ? body.date_of_birth : "";
     const guardianEmail = typeof body.guardian_email === "string" ? body.guardian_email.trim().toLowerCase() : "";
     if (!/^[a-z0-9][a-z0-9-]{1,79}$/.test(competitionSlug)) return reply({ error: "Invalid competition" }, 400);
-    if (displayName.length < 2 || displayName.length > 120) return reply({ error: "Enter a valid participant name" }, 400);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || Number.isNaN(Date.parse(dob + "T00:00:00Z")) || new Date(dob + "T00:00:00Z").toISOString().slice(0, 10) !== dob) return reply({ error: "Enter date of birth in YYYY-MM-DD format" }, 400);
     if (guardianEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardianEmail)) return reply({ error: "Enter a valid guardian email address" }, 400);
     if (guardianEmail === user.email.toLowerCase()) return reply({ error: "A separate guardian account is required for this consent workflow" }, 400);
     const { data, error } = await admin.rpc("abacus_create_registration_intent", {
-      p_competition_slug: competitionSlug, p_student_user_id: user.id,
-      p_student_display_name: displayName, p_date_of_birth: dob, p_guardian_email: guardianEmail,
+      p_competition_slug: competitionSlug,
+      p_student_user_id: user.id,
+      p_guardian_email: guardianEmail,
     });
     if (error) return reply({ error: error.message }, error.code === "23505" ? 409 : 400);
-    return reply({ ...data, message: "Share the request ID with the named guardian. The guardian must sign in with that exact email and confirm consent before a registration is created." }, 201);
+    return reply({ ...data, message: "No participant name or date of birth has been collected yet. Share this reference with the named guardian; the guardian will enter the participant details after reviewing the consent statement." }, 201);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Request could not be processed";
     return reply({ error: message }, message === "Authentication required" || message.includes("verified email") ? 401 : 400);
