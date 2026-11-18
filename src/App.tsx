@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { supabase, supabaseConfigured } from "./lib/supabase";
 
-type PortalView = "overview" | "register" | "schedule" | "account" | "help";
+type PortalView = "overview" | "register" | "schedule" | "account" | "admin" | "help";
 
 const nav: { id: PortalView; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "register", label: "Registration" },
   { id: "schedule", label: "Competition" },
   { id: "account", label: "Sign in" },
+  { id: "admin", label: "Admin" },
   { id: "help", label: "Help & rules" }
 ];
 
@@ -75,6 +76,7 @@ function App() {
         {view === "register" && <RegisterInfo />}
         {view === "schedule" && <CompetitionInfo />}
         {view === "account" && <AccountAccess />}
+        {view === "admin" && <AdminConsole />}
         {view === "help" && <HelpInfo />}
       </section>
 
@@ -279,6 +281,120 @@ function AccountAccess() {
         <p className="form-note">Use the email address you want associated with your participant account. Guardian verification and competition registration are separate steps.</p>
       </form>
     )}
+    {message && <p role="status" className="form-success">{message}</p>}
+    {error && <p role="alert" className="form-error">{error}</p>}
+  </div>;
+}
+
+function AdminConsole() {
+  const [competitionId, setCompetitionId] = useState("");
+  const [slug, setSlug] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [rulesVersion, setRulesVersion] = useState("1.0");
+  const [ageCutoff, setAgeCutoff] = useState("");
+  const [registrationOpens, setRegistrationOpens] = useState("");
+  const [registrationCloses, setRegistrationCloses] = useState("");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
+  const [duration, setDuration] = useState("1800");
+  const [ageGroupsJson, setAgeGroupsJson] = useState('[\n  { "code": "OPEN", "label": "Age group", "min_age_months": 0, "max_age_months": 1200, "question_count": 30, "duration_seconds": 1800 }\n]');
+  const [reviewId, setReviewId] = useState("");
+  const [decision, setDecision] = useState<"approved" | "rejected" | "needs_information">("approved");
+  const [reviewNote, setReviewNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  async function callAdmin(action: string, payload: Record<string, unknown>) {
+    if (!supabase) { setError("Supabase is not configured in this deployment."); return; }
+    setBusy(true); setError(""); setMessage("");
+    const { data, error: invokeError } = await supabase.functions.invoke("abacus-admin-workflow", {
+      body: { action, ...payload }
+    });
+    setBusy(false);
+    if (invokeError) setError(invokeError.message);
+    else setMessage(JSON.stringify(data));
+  }
+
+  async function saveConfiguration(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    let ageGroups: unknown;
+    try { ageGroups = JSON.parse(ageGroupsJson); }
+    catch { setError("Age groups must be valid JSON."); return; }
+    if (!Array.isArray(ageGroups) || ageGroups.length === 0) {
+      setError("Add at least one age group."); return;
+    }
+    await callAdmin("save_configuration", {
+      competition_id: competitionId.trim() || null,
+      config: {
+        slug: slug.trim(), title: title.trim(), description: description.trim(),
+        status: "draft", rules_version: rulesVersion.trim(), age_cutoff_date: ageCutoff,
+        registration_opens_at: registrationOpens || null,
+        registration_closes_at: registrationCloses || null,
+        starts_at: startsAt || null, ends_at: endsAt || null,
+        duration_seconds: Number(duration), age_groups: ageGroups
+      }
+    });
+  }
+
+  async function submitReview(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await callAdmin("review_registration", {
+      registration_id: reviewId.trim(), decision, note: reviewNote.trim()
+    });
+  }
+
+  return <div className="panel">
+    <p className="eyebrow">RESTRICTED STAFF WORKSPACE</p>
+    <h2>Competition administration</h2>
+    <p>Only verified accounts with an active staff role can use these server-checked actions. Access is never granted by a browser role setting.</p>
+    {!supabaseConfigured || !supabase ? <span className="status-tag">Supabase configuration required</span> : <>
+      <form className="auth-form" onSubmit={saveConfiguration}>
+        <h3>Competition configuration</h3>
+        <label htmlFor="admin-competition-id">Existing competition ID (leave blank to create)</label>
+        <input id="admin-competition-id" value={competitionId} onChange={e => setCompetitionId(e.target.value)} placeholder="UUID for an existing competition" />
+        <label htmlFor="admin-slug">Competition slug</label>
+        <input id="admin-slug" required maxLength={100} value={slug} onChange={e => setSlug(e.target.value)} />
+        <label htmlFor="admin-title">Competition title</label>
+        <input id="admin-title" required maxLength={160} value={title} onChange={e => setTitle(e.target.value)} />
+        <label htmlFor="admin-description">Description</label>
+        <textarea id="admin-description" value={description} onChange={e => setDescription(e.target.value)} />
+        <label htmlFor="admin-rules">Rules version</label>
+        <input id="admin-rules" required value={rulesVersion} onChange={e => setRulesVersion(e.target.value)} />
+        <label htmlFor="admin-cutoff">Age cutoff date</label>
+        <input id="admin-cutoff" type="date" required value={ageCutoff} onChange={e => setAgeCutoff(e.target.value)} />
+        <label htmlFor="admin-opens">Registration opens (with timezone)</label>
+        <input id="admin-opens" type="datetime-local" value={registrationOpens} onChange={e => setRegistrationOpens(e.target.value)} />
+        <label htmlFor="admin-closes">Registration closes (with timezone)</label>
+        <input id="admin-closes" type="datetime-local" value={registrationCloses} onChange={e => setRegistrationCloses(e.target.value)} />
+        <label htmlFor="admin-starts">Competition starts (with timezone)</label>
+        <input id="admin-starts" type="datetime-local" value={startsAt} onChange={e => setStartsAt(e.target.value)} />
+        <label htmlFor="admin-ends">Competition ends (with timezone)</label>
+        <input id="admin-ends" type="datetime-local" value={endsAt} onChange={e => setEndsAt(e.target.value)} />
+        <label htmlFor="admin-duration">Default duration (seconds)</label>
+        <input id="admin-duration" type="number" min="60" max="14400" required value={duration} onChange={e => setDuration(e.target.value)} />
+        <label htmlFor="admin-age-groups">Age groups JSON</label>
+        <textarea id="admin-age-groups" rows={8} required value={ageGroupsJson} onChange={e => setAgeGroupsJson(e.target.value)} />
+        <p className="form-note">The example age band is a draft placeholder only. Replace it with competition-owner-approved age boundaries before saving. Saving creates a draft; it does not open registration.</p>
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Saving securely…" : "Save draft configuration"}</button>
+      </form>
+      <hr />
+      <form className="auth-form" onSubmit={submitReview}>
+        <h3>Eligibility review</h3>
+        <label htmlFor="admin-registration-id">Registration ID</label>
+        <input id="admin-registration-id" required value={reviewId} onChange={e => setReviewId(e.target.value)} placeholder="Registration UUID" />
+        <label htmlFor="admin-decision">Decision</label>
+        <select id="admin-decision" value={decision} onChange={e => setDecision(e.target.value as typeof decision)}>
+          <option value="approved">Approve eligibility</option>
+          <option value="rejected">Reject eligibility</option>
+          <option value="needs_information">Request more information</option>
+        </select>
+        <label htmlFor="admin-review-note">Review note</label>
+        <textarea id="admin-review-note" maxLength={1000} value={reviewNote} onChange={e => setReviewNote(e.target.value)} />
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Submitting…" : "Submit eligibility decision"}</button>
+      </form>
+    </>}
     {message && <p role="status" className="form-success">{message}</p>}
     {error && <p role="alert" className="form-error">{error}</p>}
   </div>;
