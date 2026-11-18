@@ -103,6 +103,7 @@ function RegisterInfo() {
   const [dob, setDob] = useState("");
   const [guardianEmail, setGuardianEmail] = useState("");
   const [intentId, setIntentId] = useState("");
+  const [consentVersion, setConsentVersion] = useState("");
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -140,6 +141,7 @@ function RegisterInfo() {
     if (invokeError) setError(invokeError.message);
     else {
       setIntentId(data.intent_id ?? "");
+      setConsentVersion(data.consent_version ?? "");
       setMessage("Request created. Share the request reference with the named guardian. The guardian must sign in using that exact email and confirm consent.");
     }
   }
@@ -156,6 +158,7 @@ function RegisterInfo() {
     else {
       setMessage(data.message ?? "Guardian consent recorded. Registration is awaiting eligibility review.");
       setIntentId("");
+      setConsentVersion("");
       setConsentAccepted(false);
     }
   }
@@ -193,12 +196,12 @@ function RegisterInfo() {
             <input id="consent-intent-id" required value={intentId} onChange={e => setIntentId(e.target.value)} placeholder="Paste the request UUID shared by the student" />
             <label className="consent-check"><input type="checkbox" checked={consentAccepted} onChange={e => setConsentAccepted(e.target.checked)} required /> I am the parent / legal guardian using the verified email address named in this request. I have reviewed and agree to the competition consent terms shown by the organiser.</label>
             <button className="primary" type="submit" disabled={busy || !consentAccepted}>{busy ? "Confirming consent…" : "Confirm guardian consent"}</button>
-            <p className="form-note">Your signed-in email must exactly match the guardian email on the request. A successful confirmation submits the entry for eligibility review; it does not grant exam access.</p>
+            <div className="consent-summary"><strong>Guardian consent summary</strong><p>I confirm that I am the parent or legal guardian of this participant. I authorise VATTAMS Abacus Beads Championship to process the participant details supplied for competition registration, age-group eligibility review, participant support and competition administration under the published competition rules and privacy notice.</p><small>Consent / rules version: {consentVersion || "Version is checked by the server"}</small></div><p className="form-note">Your signed-in email must exactly match the guardian email on the request. The full privacy notice and final consent wording must be published before public registration opens. A successful confirmation submits the entry for eligibility review; it does not grant exam access.</p>
           </form>
         )}
       </>
     )}
-    {message && <p role="status" className="form-success">{message}{intentId && mode === "student" ? <><br /><strong>Request reference:</strong> <code>{intentId}</code></> : null}</p>}
+    {message && <p role="status" className="form-success">{message}{intentId && mode === "student" ? <><br /><strong>Request reference:</strong> <code>{intentId}</code><br /><strong>Consent version:</strong> {consentVersion}</> : null}</p>}
     {error && <p role="alert" className="form-error">{error}</p>}
   </div>;
 }
