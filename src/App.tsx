@@ -14,6 +14,12 @@ const nav: { id: PortalView; label: string }[] = [
 function App() {
   const [view, setView] = useState<PortalView>("overview");
 
+  useEffect(() => {
+    const handleNavigate = (event: Event) => setView((event as CustomEvent<PortalView>).detail);
+    window.addEventListener("abacus:navigate", handleNavigate);
+    return () => window.removeEventListener("abacus:navigate", handleNavigate);
+  }, []);
+
   return (
     <main className="shell">
       <header className="topbar">
@@ -91,7 +97,110 @@ function Overview({ onRegister }: { onRegister: () => void }) {
 }
 
 function RegisterInfo() {
-  return <div className="panel"><p className="eyebrow">STUDENT / GUARDIAN ENTRY</p><h2>Registration is being prepared.</h2><p>The secure registration service is not connected yet. This screen intentionally does not collect or store personal information until authentication, consent, validation and server-side registration are ready.</p><ul><li>Student account authentication</li><li>Guardian consent and contact verification when required</li><li>Date-of-birth and age-band eligibility review</li><li>Admin approval before an exam attempt is issued</li></ul><span className="status-tag">Backend connection required</span></div>;
+  const [mode, setMode] = useState<"student" | "guardian">("student");
+  const [competitionSlug, setCompetitionSlug] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [dob, setDob] = useState("");
+  const [guardianEmail, setGuardianEmail] = useState("");
+  const [intentId, setIntentId] = useState("");
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let alive = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (alive) setSignedInEmail(data.user?.email ?? null);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSignedInEmail(session?.user?.email ?? null);
+    });
+    return () => {
+      alive = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  async function submitIntent(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) return;
+    setBusy(true); setError(""); setMessage("");
+    const { data, error: invokeError } = await supabase.functions.invoke("abacus-registration-intent", {
+      body: {
+        competition_slug: competitionSlug.trim(),
+        student_display_name: displayName.trim(),
+        date_of_birth: dob,
+        guardian_email: guardianEmail.trim().toLowerCase()
+      }
+    });
+    setBusy(false);
+    if (invokeError) setError(invokeError.message);
+    else {
+      setIntentId(data.intent_id ?? "");
+      setMessage("Request created. Share the request reference with the named guardian. The guardian must sign in using that exact email and confirm consent.");
+    }
+  }
+
+  async function confirmConsent(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) return;
+    setBusy(true); setError(""); setMessage("");
+    const { data, error: invokeError } = await supabase.functions.invoke("abacus-guardian-consent", {
+      body: { intent_id: intentId.trim(), consent_accepted: consentAccepted }
+    });
+    setBusy(false);
+    if (invokeError) setError(invokeError.message);
+    else {
+      setMessage(data.message ?? "Guardian consent recorded. Registration is awaiting eligibility review.");
+      setIntentId("");
+      setConsentAccepted(false);
+    }
+  }
+
+  return <div className="panel">
+    <p className="eyebrow">SECURE STUDENT / GUARDIAN REGISTRATION</p>
+    <h2>Start your championship entry.</h2>
+    {!supabaseConfigured || !supabase ? (
+      <><p>The registration service is not available in this deployment until the dedicated Abacus Supabase URL and publishable key are configured.</p><span className="status-tag">Deployment configuration required</span></>
+    ) : !signedInEmail ? (
+      <><p>Sign in with a verified email before starting. Student and guardian accounts must be separate for this consent workflow.</p><button className="primary" onClick={() => window.dispatchEvent(new CustomEvent("abacus:navigate", { detail: "account" }))}>Go to sign in →</button></>
+    ) : (
+      <>
+        <p>Signed in as <strong>{signedInEmail}</strong>. Choose the correct step for this account.</p>
+        <div className="mode-tabs">
+          <button type="button" className={mode === "student" ? "selected" : ""} onClick={() => { setMode("student"); setError(""); setMessage(""); }}>Student request</button>
+          <button type="button" className={mode === "guardian" ? "selected" : ""} onClick={() => { setMode("guardian"); setError(""); setMessage(""); }}>Guardian consent</button>
+        </div>
+        {mode === "student" ? (
+          <form className="auth-form" onSubmit={submitIntent}>
+            <label htmlFor="competition-slug">Competition code</label>
+            <input id="competition-slug" required maxLength={80} value={competitionSlug} onChange={e => setCompetitionSlug(e.target.value)} placeholder="Official competition code" />
+            <label htmlFor="student-display-name">Participant name</label>
+            <input id="student-display-name" required minLength={2} maxLength={120} value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Name as it should appear on the entry" />
+            <label htmlFor="student-dob">Date of birth</label>
+            <input id="student-dob" type="date" required value={dob} onChange={e => setDob(e.target.value)} />
+            <label htmlFor="guardian-email">Parent / guardian email</label>
+            <input id="guardian-email" type="email" required maxLength={254} value={guardianEmail} onChange={e => setGuardianEmail(e.target.value)} placeholder="parent@example.com" />
+            <button className="primary" type="submit" disabled={busy}>{busy ? "Creating secure request…" : "Create guardian consent request"}</button>
+            <p className="form-note">The request is private and expires after 24 hours. It does not create an approved registration or exam attempt. The named guardian must sign in separately to confirm consent.</p>
+          </form>
+        ) : (
+          <form className="auth-form" onSubmit={confirmConsent}>
+            <label htmlFor="consent-intent-id">Student request reference</label>
+            <input id="consent-intent-id" required value={intentId} onChange={e => setIntentId(e.target.value)} placeholder="Paste the request UUID shared by the student" />
+            <label className="consent-check"><input type="checkbox" checked={consentAccepted} onChange={e => setConsentAccepted(e.target.checked)} required /> I am the parent / legal guardian using the verified email address named in this request. I have reviewed and agree to the competition consent terms shown by the organiser.</label>
+            <button className="primary" type="submit" disabled={busy || !consentAccepted}>{busy ? "Confirming consent…" : "Confirm guardian consent"}</button>
+            <p className="form-note">Your signed-in email must exactly match the guardian email on the request. A successful confirmation submits the entry for eligibility review; it does not grant exam access.</p>
+          </form>
+        )}
+      </>
+    )}
+    {message && <p role="status" className="form-success">{message}{intentId && mode === "student" ? <><br /><strong>Request reference:</strong> <code>{intentId}</code></> : null}</p>}
+    {error && <p role="alert" className="form-error">{error}</p>}
+  </div>;
 }
 
 function CompetitionInfo() {
