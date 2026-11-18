@@ -1,5 +1,5 @@
 -- Module 60: server-authoritative online exam lifecycle.
--- Apply only to Supabase project lqzdyegfhpinmojyrtur after Modules 57/58.
+-- Apply only to Supabase project lqzdyegfhpinmoiyrtur after Modules 57/58.
 begin;
 
 create or replace function abacus.exam_start_or_resume(
