@@ -1,0 +1,45 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Vary": "Origin",
+};
+function reply(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
+}
+function getAdmin() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("Server configuration is incomplete");
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+async function verifiedUser(req: Request, admin: ReturnType<typeof getAdmin>) {
+  const match = (req.headers.get("Authorization") ?? "").match(/^Bearer\s+(.+)$/i);
+  if (!match) throw new Error("Authentication required");
+  const { data, error } = await admin.auth.getUser(match[1]);
+  if (error || !data.user?.email || !data.user.email_confirmed_at) throw new Error("A verified email sign-in is required");
+  return data.user;
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return reply({ error: "Method not allowed" }, 405);
+  try {
+    const admin = getAdmin();
+    const user = await verifiedUser(req, admin);
+    const body = await req.json();
+    const intentId = typeof body.intent_id === "string" ? body.intent_id : "";
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(intentId)) return reply({ error: "Invalid consent request reference" }, 400);
+    if (body.consent_accepted !== true) return reply({ error: "Guardian must explicitly accept the published consent terms" }, 400);
+    const { data, error } = await admin.rpc("abacus_confirm_guardian_registration", {
+      p_intent_id: intentId, p_guardian_user_id: user.id, p_guardian_email: user.email!.toLowerCase(),
+    });
+    if (error) return reply({ error: error.message }, error.code === "42501" ? 403 : error.code === "23505" ? 409 : 400);
+    return reply({ ...data, message: "Guardian consent recorded. Registration is submitted for eligibility review; this does not grant exam access." }, 201);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Request could not be processed";
+    return reply({ error: message }, message === "Authentication required" || message.includes("verified email") ? 401 : 400);
+  }
+});
