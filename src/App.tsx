@@ -290,6 +290,8 @@ function AccountAccess() {
 
 function AdminConsole() {
   const [competitionId, setCompetitionId] = useState("");
+  const [competitions, setCompetitions] = useState<CompetitionEntry[]>([]);
+  const [loadingCompetitions, setLoadingCompetitions] = useState(false);
   const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -406,6 +408,7 @@ function AdminConsole() {
 
 
 type ExamQuestion = { question_id: string; sequence_no: number; question: unknown };
+type CompetitionEntry = { competition_id: string; title: string; description: string | null; status: string; starts_at: string | null; ends_at: string | null; registration_status: string; eligibility_status: string; age_group: string | null; can_start: boolean };
 type ExamSession = { attempt_id: string; status: string; started_at: string; server_now: string; deadline_at: string; questions: ExamQuestion[] };
 type QueuedAnswer = { response: string; response_version: number; client_saved_at: string };
 
@@ -462,12 +465,46 @@ function StudentExamRoom() {
     } catch { setError("Saved offline responses could not be read. Keep this tab open and contact support before continuing."); }
   }, [session?.attempt_id]);
 
+  useEffect(() => {
+    if (!signedIn || !supabase) { setCompetitions([]); return; }
+    let active = true;
+    setLoadingCompetitions(true);
+    supabase.functions.invoke("abacus-exam-engine", { body: { action: "list_my_competitions" } })
+      .then(({ data, error: invokeError }) => {
+        if (!active) return;
+        if (invokeError || data?.error) {
+          setError(invokeError?.message ?? data.error);
+          setCompetitions([]);
+        } else {
+          const entries = Array.isArray(data?.result) ? data.result as CompetitionEntry[] : [];
+          setCompetitions(entries);
+          if (!competitionId && entries.length === 1) setCompetitionId(entries[0].competition_id);
+        }
+      })
+      .catch(e => { if (active) setError(e instanceof Error ? e.message : "Unable to load your competitions."); })
+      .finally(() => { if (active) setLoadingCompetitions(false); });
+    return () => { active = false; };
+  }, [signedIn]);
+
   async function invokeExam(payload: Record<string, unknown>) {
     if (!supabase) throw new Error("Participant authentication is not configured.");
     const { data, error: invokeError } = await supabase.functions.invoke("abacus-exam-engine", { body: payload });
     if (invokeError) throw new Error(invokeError.message);
     if (data?.error) throw new Error(data.error);
     return data?.result;
+  }
+
+  async function startOrResumeFor(id: string) {
+    setCompetitionId(id);
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const result = await invokeExam({ action: "start_or_resume", competition_id: id });
+      if (!result?.attempt_id || !Array.isArray(result.questions)) throw new Error("The exam service returned an incomplete session.");
+      setSession(result as ExamSession);
+      setSubmitted(false);
+      setMessage("Exam session restored. Your official deadline is controlled by the competition server.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to start the exam."); }
+    finally { setBusy(false); }
   }
 
   async function startOrResume() {
@@ -548,12 +585,21 @@ function StudentExamRoom() {
     <h2>Official Soroban challenge</h2>
     {!supabaseConfigured || !supabase ? <p className="form-error">The dedicated competition authentication connection is not configured in this deployment.</p> :
       !signedIn ? <><p>Sign in with your verified participant account before entering the exam room.</p><button className="secondary" onClick={() => window.dispatchEvent(new CustomEvent("abacus:navigate", { detail: "account" }))}>Go to secure sign in</button></> :
-      !session ? <form className="auth-form" onSubmit={event => { event.preventDefault(); void startOrResume(); }}>
-        <label htmlFor="exam-competition-id">Competition ID supplied in your official invitation</label>
-        <input id="exam-competition-id" value={competitionId} onChange={event => setCompetitionId(event.target.value)} required placeholder="Competition UUID" />
-        <button className="primary" disabled={busy || !online}>{busy ? "Checking eligibility…" : "Start / resume my exam"}</button>
-        <p className="form-note">The server checks registration, guardian consent, eligibility, competition status and attempt limits. Reconnecting restores the same active attempt.</p>
-      </form> :
+      !session ? <div className="auth-form">
+        <h3>Your registered competitions</h3>
+        {loadingCompetitions ? <p>Loading your secure competition list…</p> : competitions.length === 0 ? <p>No confirmed competition entries are linked to this account yet. Your entry must be confirmed and eligibility approved before an exam appears here.</p> :
+          <div className="competition-entry-list">{competitions.map(entry => <article className="info-card" key={entry.competition_id}>
+            <span className="card-number">{entry.age_group ?? "PARTICIPANT"}</span>
+            <h3>{entry.title}</h3>
+            {entry.description && <p>{entry.description}</p>}
+            <p><strong>Eligibility:</strong> {entry.eligibility_status.replaceAll("_", " ")} · <strong>Registration:</strong> {entry.registration_status.replaceAll("_", " ")}</p>
+            <p>{entry.starts_at ? "Starts: " + new Date(entry.starts_at).toLocaleString() : "Schedule to be announced"}</p>
+            <button className="primary" disabled={busy || !online || !entry.can_start} onClick={() => { setCompetitionId(entry.competition_id); void startOrResumeFor(entry.competition_id); }}>
+              {entry.can_start ? "Start / resume exam" : "Not open for exam"}
+            </button>
+          </article>)}</div>}
+        <p className="form-note">This list is generated by the server for your signed-in account only. The exam engine independently rechecks all eligibility and timing rules when you start.</p>
+      </div> :
       <>
         <div className="exam-status-row">
           <span className={online ? "connection-state connected" : "connection-state"}>{online ? "● Connected" : "● Offline · answers queued"}</span>
