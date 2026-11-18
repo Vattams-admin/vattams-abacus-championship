@@ -37,7 +37,6 @@ alter table abacus.registration_intents enable row level security;
 revoke all on table abacus.registration_intents from public, anon, authenticated;
 grant all on table abacus.registration_intents to service_role;
 
-revoke all on function abacus.confirm_guardian_registration(uuid, uuid, text) from public;
 create or replace function abacus.confirm_guardian_registration(
   p_intent_id uuid,
   p_guardian_user_id uuid,
