@@ -52,15 +52,13 @@ Deno.serve(async (req: Request) => {
   }
 
   // Authorization is read from the private staff_roles table, never user_metadata or request JSON.
-  const { data: role, error: roleError } = await serviceClient
-    .schema("abacus").from("staff_roles")
-    .select("role")
-    .eq("user_id", user.id)
-    .is("revoked_at", null)
-    .maybeSingle();
+  const { data: role, error: roleError } = await serviceClient.rpc(
+    "abacus_get_active_staff_role",
+    { p_user_id: user.id },
+  );
 
   if (roleError) return json({ error: "Unable to verify staff authorization" }, 500, origin);
-  if (!role || !["super_admin", "competition_admin", "reviewer"].includes(role.role)) {
+  if (!role || !["super_admin", "competition_admin", "reviewer"].includes(role)) {
     return json({ error: "Staff authorization required" }, 403, origin);
   }
 
